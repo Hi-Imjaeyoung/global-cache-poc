@@ -1,8 +1,17 @@
 server:
-  port: 8082 # 읽기 서버는 8082 포트로 실행
+  port: 0 # 읽기 서버는 8082 포트로 실행
 
 spring:
+  application:
+    name: query-api
   datasource:
-    url: jdbc:mysql://localhost:3306/growup_db
+    url: jdbc:mysql://localhost:3307/growup_db
     username: root
     password: root
+
+eureka:
+  instance:
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/

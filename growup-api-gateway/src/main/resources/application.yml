@@ -1,0 +1,24 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        # 1. 쓰기 요청 (Command) 라우팅
+        - id: command-service
+          uri: lb://COMMAND-API  # 🔥 유레카에 'COMMAND-API'라는 이름으로 등록된 서버로 보내라! (포트 몰라도 됨)
+          predicates:
+            - Path=/api/command/** # 이 경로로 오면 여기로 보냄
+
+        # 2. 읽기 요청 (Query) 라우팅
+        - id: query-service
+          uri: lb://QUERY-API    # 🔥 유레카에 'QUERY-API'라는 이름으로 등록된 서버들 중 하나로 뺑뺑이(LoadBalancing) 돌려라!
+          predicates:
+            - Path=/api/query/**
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/

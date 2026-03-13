@@ -1,0 +1,14 @@
+server:
+  port: 8761
+
+spring:
+  application:
+    name: eureka-server
+
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+  server: # 🔥 여기 추가!
+    enable-self-preservation: false # 자기 보호 모드 해제! (심장 안 뛰면 바로바로 명부에서 지워버려!)
+    eviction-interval-timer-in-ms: 4000 # 죽은 애들 청소하는 주기를 4초로 확 줄임 (기본 60초)
