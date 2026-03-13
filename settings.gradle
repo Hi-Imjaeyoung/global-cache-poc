@@ -1,0 +1,4 @@
+rootProject.name = 'growup-cache-poc'
+include 'growup-common'
+include 'growup-command-api'
+include 'growup-query-api'
