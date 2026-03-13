@@ -1,0 +1,7 @@
+// 이미 루트에서 boot 버전을 관리하므로 id만 선언!
+apply plugin: 'org.springframework.boot'
+
+dependencies {
+    // 유레카 서버 라이브러리 장착!
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-server'
+}
