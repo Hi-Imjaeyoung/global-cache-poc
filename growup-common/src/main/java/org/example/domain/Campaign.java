@@ -31,6 +31,6 @@ public class Campaign {
     private List<Keyword> keywordList = new ArrayList<>();
 
     @ManyToOne
-    @JoinColumn(name = "email", referencedColumnName = "email")
+    @JoinColumn(name = "member_id", referencedColumnName = "id")
     private Member member;
 }

@@ -26,6 +26,6 @@ public class Keyword extends CoupangExcelData {
     private String keySearchType;  // 검색 비검색
 
     @ManyToOne
-    @JoinColumn(name = "campaignId", referencedColumnName = "campaignId")
+    @JoinColumn(name = "campaignId", referencedColumnName = "id")
     private Campaign campaign;
 }
