@@ -8,6 +8,12 @@ spring:
     url: jdbc:mysql://localhost:3307/growup_db
     username: root
     password: root
+  kafka:
+    consumer:
+      bootstrap-servers: localhost:9092
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
 eureka:
   instance:
