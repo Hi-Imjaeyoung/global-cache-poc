@@ -1,6 +1,5 @@
 package org.example.repo;
 
-import com.querydsl.core.Tuple;
 import org.example.dto.AllCampaignTypeData;
 import org.example.dto.CampaignAnalysisDto;
 
@@ -12,4 +11,5 @@ public interface KeywordRepositoryCustom {
 
     Map<Integer, AllCampaignTypeData> getAllTypeOfCampaignAdCostSumAndAdSaleSumByPeriodAndEmailByCache(LocalDate start, LocalDate end, String email);
     Map<String, CampaignAnalysisDto> getAllTypeOfCampaignAdCostAndSaleSumByCampaignType(LocalDate start, LocalDate end, String email);
+    Map<LocalDate,AllCampaignTypeData> getDeletedDataByPeriodInCampaignIds(LocalDate start,LocalDate end, List<Long> campaignIds);
 }

@@ -2,6 +2,7 @@ package org.example.repo;
 
 import com.querydsl.core.Tuple;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.example.dto.AllCampaignTypeData;
 import org.example.dto.CampaignAnalysisDto;
@@ -91,6 +92,28 @@ public class KeywordRepositoryImpl implements KeywordRepositoryCustom{
             map.put(tuple.get(campaign.camAdType),new CampaignAnalysisDto(adCostSum,adSaleSum));
         }
         map.put("총 매출",new CampaignAnalysisDto(totalAdCost,totalAdSale));
+        return map;
+    }
+
+    public Map<LocalDate, AllCampaignTypeData> getDeletedDataByPeriodInCampaignIds(LocalDate start, LocalDate end, List<Long> campaignIds){
+        var dateBetween = keyword.date.between(start,end);
+        List<Tuple> queryResult = queryFactory
+                .select(keyword.date,campaign.camAdType,keyword.adCost.sum(),keyword.adSales.sum())
+                .from(keyword)
+                .join(keyword.campaign,campaign)
+                .where(dateBetween,campaign.id.in(campaignIds))
+                .groupBy(campaign.camAdType)
+                .fetch();
+        Map<LocalDate,AllCampaignTypeData> map = new HashMap<>();
+        for(Tuple tuple : queryResult){
+            LocalDate date = tuple.get(keyword.date);
+            AllCampaignTypeData allCampaignTypeData = map.getOrDefault(date,new AllCampaignTypeData());
+            String type = tuple.get(campaign.camAdType);
+            Double cost = tuple.get(keyword.adCost.sum());
+            Double sales = tuple.get(keyword.adSales.sum());
+            AllCampaignTypeData oldData = new AllCampaignTypeData(type,cost,sales);
+            allCampaignTypeData.sum(oldData);
+        }
         return map;
     }
 }
