@@ -1,0 +1,56 @@
+package org.example.global;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.example.dto.AllCampaignTypeData;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class CampaignRedisCacheManager {
+
+    private final StringRedisTemplate redisTemplate; // 가장 가볍고 빠른 String 전용 템플릿
+    private final ObjectMapper objectMapper;
+
+    public AllCampaignTypeData[] getCachedRawData(String email, int year){
+        String key = "raw-data:"+email+":"+year;
+        String json = redisTemplate.opsForValue().get(key);
+
+        if(json == null) return null;
+
+        try{
+            return objectMapper.readValue(json, AllCampaignTypeData[].class);
+        } catch (JsonMappingException e) {
+            log.error("[Redis] Redis 데이터 로딩 중 JsonParing 에러가 발생 : {}",e.getMessage());
+        } catch (JsonProcessingException e) {
+            log.error("[Redis] Redis 데이터 로딩 중 JsonMapping 에러가 발생 : {}",e.getMessage());
+        }
+        return null;
+    }
+
+    public void saveRawData(String email,int year, AllCampaignTypeData[] rawData){
+        String key = "raw-data:"+email+":"+year;
+        try {
+            String json = objectMapper.writeValueAsString(rawData);
+            redisTemplate.opsForValue().set(key, json, 24, TimeUnit.HOURS);
+        } catch (JsonProcessingException e) {
+            log.error("Redis 캐시 저장 실패!", e);
+        }
+    }
+
+    public void removeCacheData(String email, int year){
+        String key = "raw-data:"+email+":"+year;
+        log.info("Redis 저장 데이터 삭제 키:{}",key);
+        redisTemplate.delete(key);
+    }
+
+}

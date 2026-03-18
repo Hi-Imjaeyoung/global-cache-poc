@@ -1,7 +1,7 @@
 package org.example.listener;
 
 import lombok.RequiredArgsConstructor;
-import org.example.service.LazySegmentTreeService;
+import org.example.service.LegacyLazySegmentTreeService;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 @Component
 @RequiredArgsConstructor
 public class CacheUpdateEventListener {
-    private final LazySegmentTreeService lazySegmentTreeService;
+    private final LegacyLazySegmentTreeService lazySegmentTreeService;
     private final Executor cpuExecutor;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

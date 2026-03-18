@@ -1,0 +1,33 @@
+plugins {
+    id("java")
+}
+
+group = "org.example"
+version = "unspecified"
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':growup-common')
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    testImplementation(platform("org.junit:junit-bom:5.10.0"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    implementation 'com.github.ben-manes.caffeine:caffeine'
+    // 1. QueryDSL 라이브러리 (쿼리 작성용)
+    implementation 'com.querydsl:querydsl-jpa:5.0.0:jakarta'
+
+    // 2. QueryDSL Q-Class 생성기 (빌드할 때 Q파일 만들어주는 녀석)
+    annotationProcessor "com.querydsl:querydsl-apt:5.0.0:jakarta"
+
+    // 3. java.lang.NoClassDefFoundError 방지 (이거 없으면 가끔 에러 터짐)
+    annotationProcessor "jakarta.persistence:jakarta.persistence-api"
+    annotationProcessor "jakarta.annotation:jakarta.annotation-api"
+
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
