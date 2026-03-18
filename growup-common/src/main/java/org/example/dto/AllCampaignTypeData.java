@@ -45,6 +45,18 @@ public class AllCampaignTypeData {
         return this;
     }
 
+    public AllCampaignTypeData minus(AllCampaignTypeData other) {
+        if (other == null || other.campaignAnalysisDtoMap.isEmpty()) {
+            return this;
+        }
+        other.campaignAnalysisDtoMap.forEach((type, otherDto) -> {
+            this.campaignAnalysisDtoMap.merge(type, otherDto, (oldVal, newVal) ->
+                    oldVal.minus(newVal.getAdCost(), newVal.getAdSales())
+            );
+        });
+        return this;
+    }
+
     public AllCampaignTypeData sum(AllCampaignTypeData other){
         AllCampaignTypeData sumOne = new AllCampaignTypeData();
         sumOne.campaignAnalysisDtoMap = new HashMap<>(this.campaignAnalysisDtoMap);
