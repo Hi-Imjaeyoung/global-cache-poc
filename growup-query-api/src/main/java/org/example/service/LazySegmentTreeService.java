@@ -9,8 +9,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -151,17 +149,17 @@ public class LazySegmentTreeService {
         String key = email+":"+year;
         return !buildingInProgress.add(key);
     }
-    public void buildTree(String email, int year, Map<Integer, AllCampaignTypeData> dailyDataMap){
+    public void buildTree(String email, int year, AllCampaignTypeData[] dailyDataMap){
         SegmentNodeData segmentNodeData = getSegmentNodeDataSafe(email,year);
         int nodeEnd = LocalDate.of(year,1,1).isLeapYear() ? 366 : 365;
-        fillLeafNodes(segmentNodeData, dailyDataMap, 1, nodeEnd);
+        fillLeafNodes(segmentNodeData, dailyDataMap, nodeEnd);
         buildTree(segmentNodeData, 1, nodeEnd);
     }
 
-    private void fillLeafNodes(SegmentNodeData segmentNodeData, Map<Integer, AllCampaignTypeData> dailyDataMap, int start, int end) {
-        for (int i = start; i <= end; i++) {
+    private void fillLeafNodes(SegmentNodeData segmentNodeData, AllCampaignTypeData[] dailyDataMap, int end) {
+        for (int i = 1; i <= end; i++) {
             int leafKey = makeKey(i, i);
-            AllCampaignTypeData data = dailyDataMap.getOrDefault(leafKey, new AllCampaignTypeData());
+            AllCampaignTypeData data = dailyDataMap[i];
             segmentNodeData.put(leafKey, data);
         }
     }
@@ -176,26 +174,9 @@ public class LazySegmentTreeService {
         AllCampaignTypeData rightValue = buildTree(segmentNodeData,mid+1,endCount);
 
         int key = makeKey(startCount,endCount);
-        AllCampaignTypeData sumValue = leftValue.add(rightValue);
+        AllCampaignTypeData sumValue = leftValue.sum(rightValue);
         segmentNodeData.put(key,sumValue);
         return sumValue;
-    }
-
-    public Map<String, Long> getCacheStats() {
-        return Map.of(
-                "total", requestCount.sum(),
-                "hit", hitCount.sum(),
-                "miss", requestCount.sum() - hitCount.sum()
-        );
-    }
-
-    public void resetCacheStats() {
-        requestCount.reset();
-        hitCount.reset();
-    }
-
-    public void incrementRequestCount(){
-        requestCount.increment();;
     }
 
     public void reBuildTree(String email,LocalDate start, LocalDate end){
@@ -250,7 +231,7 @@ public class LazySegmentTreeService {
         int key = makeKey(rootS,rootE);
         AllCampaignTypeData data = segmentNodeData.getCampaignAnalysisDto(key);
         if (data != null) {
-            data.add(changedData);
+            data.minus(changedData);
         }
         if(rootS == rootE) return;
         int mid = (rootS + rootE)/2;

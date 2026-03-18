@@ -29,16 +29,4 @@ public class CampaignController {
                 .data(totalCampaignsData)
                 .build(),HttpStatus.OK);
     }
-
-    @GetMapping("/cacheRate")
-    public Map<String, Object> getStats() {
-        Map<String, Long> stats = campaignTotalDataFacade.getCacheHitRate();
-        // 보기 좋게 합쳐서 리턴
-        return new HashMap<>(stats);
-    }
-
-    @PostMapping("/cacheReset")
-    public void reset() {
-        campaignTotalDataFacade.resetCacheStats();
-    }
 }

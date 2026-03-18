@@ -10,17 +10,26 @@ spring:
     password: root
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: create-drop
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
   kafka:
     producer:
       bootstrap-servers: localhost:9092 # 아까 띄운 도커 카프카 주소!
       # 데이터를 카프카가 이해할 수 있는 '바이트(Byte) 배열'로 변환해 주는 번역기 설정
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+logging:
+  level:
+    root: INFO
+    org.apache.kafka: WARN
+    org.springframework.kafka: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+
 eureka:
   client:
     service-url:

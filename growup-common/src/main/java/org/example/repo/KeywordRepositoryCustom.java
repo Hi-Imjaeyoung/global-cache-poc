@@ -9,7 +9,8 @@ import java.util.Map;
 
 public interface KeywordRepositoryCustom {
 
-    Map<Integer, AllCampaignTypeData> getAllTypeOfCampaignAdCostSumAndAdSaleSumByPeriodAndEmailByCache(LocalDate start, LocalDate end, String email);
+    AllCampaignTypeData[] getAllTypeOfCampaignAdCostSumAndAdSaleSumByPeriodAndEmailByCache(LocalDate start, LocalDate end, String email);
     Map<String, CampaignAnalysisDto> getAllTypeOfCampaignAdCostAndSaleSumByCampaignType(LocalDate start, LocalDate end, String email);
     Map<LocalDate,AllCampaignTypeData> getDeletedDataByPeriodInCampaignIds(LocalDate start,LocalDate end, List<Long> campaignIds);
+    void deleteKeywordByCampaignIdsAndDate(List<Long>campaignIds,LocalDate start,LocalDate end);
 }

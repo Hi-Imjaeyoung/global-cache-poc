@@ -48,12 +48,4 @@ public class CampaignTotalDataFacade {
                 .sumOfAdSalesAndAdCostByCampaignType(campaignAnalysisDataKeyCampaignType)
                 .build();
     }
-
-    public Map<String,Long> getCacheHitRate(){
-        return lazySegmentTreeService.getCacheStats();
-    }
-
-    public void resetCacheStats(){
-        lazySegmentTreeService.resetCacheStats();
-    }
 }

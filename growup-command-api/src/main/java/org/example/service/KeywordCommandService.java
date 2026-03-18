@@ -19,4 +19,9 @@ public class KeywordCommandService {
     public Map<LocalDate, AllCampaignTypeData> extractDeleteCampaignDataByPeriod(LocalDate start, LocalDate end, List<Long> campaignIds){
         return keywordRepository.getDeletedDataByPeriodInCampaignIds(start,end,campaignIds);
     }
+
+    public void deleteKeywordByCampaignIdsAndDate(List<Long>campaignIds,LocalDate start,LocalDate end){
+        keywordRepository.deleteKeywordByCampaignIdsAndDate(campaignIds,start,end);
+        return;
+    }
 }
