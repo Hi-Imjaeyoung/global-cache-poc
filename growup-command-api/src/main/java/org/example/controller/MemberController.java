@@ -1,15 +1,13 @@
 package org.example.controller;
 
 import lombok.AllArgsConstructor;
-import org.example.MemberCommandService;
-import org.example.MemberRequestRecord;
-import org.example.TreeUpdateEventProducer;
+import org.example.service.MemberCommandService;
+import org.example.dto.MemberRequestRecord;
+import org.example.producer.TreeUpdateEventProducer;
 import org.example.dto.AllCampaignTypeData;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @RequestMapping("/api/command/member")

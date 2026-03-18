@@ -1,18 +1,16 @@
-package org.example;
+package org.example.facade;
 
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import org.example.producer.TreeUpdateEventProducer;
 import org.example.dto.AllCampaignTypeData;
 import org.example.dto.CampaignDeleteDto;
 import org.example.global.CampaignRedisCacheManager;
 import org.example.service.KeywordCommandService;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Component

@@ -1,6 +1,7 @@
-package org.example;
+package org.example.service;
 
 import lombok.AllArgsConstructor;
+import org.example.dto.MemberRequestRecord;
 import org.example.domain.Member;
 
 import org.example.repo.MemberRepository;
