@@ -1,0 +1,71 @@
+# 대규모 트래픽 환경을 위한 다중 캐싱 및 이벤트 기반(EDA) 분산 아키텍처 
+
+## 1. 프로젝트 개요
+
+본 프로젝트는 이전 상위 프로젝트인 **["비동기 격벽 패턴을 통한 세그먼트 트리 캐싱 최적화"(Link)]** 의 구조적 한계를 극복하고, MSA 기반의 서버 확장(Scale-out) 시 발생하는 분산 캐시 정합성 문제를 해결하기 위해 수행되었습니다.
+
+상위 프로젝트에서는 "세그먼트 트리" 자료구조와 "트리 빌드 시 비동기 격벽(Bulkhead) 패턴"을 적용하여 단일 서버 환경에서의 극한의 성능 최적화를 이루어냈습니다. 하지만 이는 서버를 다중화(Scale-out)할 경우, 각 서버 간의 "로컬 캐시 데이터 동기화 및 정합성"을 보장하지 못한다는 치명적인 한계점을 갖고 있었습니다.
+
+따라서 본 프로젝트에서는 실제 MSA 환경(CQRS)을 구축하여 해당 문제 상황을 재현하고, **"Kafka와 Redis를 활용한 이벤트 주도 아키텍처(EDA)"** 를 도입하여 다중 서버 환경에서의 데이터 정합성 문제를 완벽하게 해결했습니다.
+
+
+## 2. 핵심 아키텍처 진화 과정
+
+### 1) MSA 환경 및 CQRS 패턴 구축
+- 단일 서버의 장애점(SPOF) 리스크를 극복하고 무한한 트래픽 확장을 위해 Command(CUD) 서버와 Query(Read) 서버를 물리적으로 분리하고 다중화했습니다.
+- Spring Cloud Gateway(WebFlux)와 Eureka를 도입하여, 클라이언트 요청의 성격에 따라 적절한 서버로 트래픽을 완벽하게 라우팅하도록 구성했습니다.
+
+%% global-cache-poc 전체 MSA 아키텍처 다이어그램
+``` mermaid
+graph TD
+    %% ==========================================
+    %% 1. 노드(도형) 정의 (특수문자 방지를 위해 쌍따옴표 적용)
+    %% ==========================================
+    Client(("fa:fa-user User"))
+    Gateway["fa:fa-door-open <br>Spring Cloud Gateway <br>(WebFlux)"]
+
+    subgraph Discovery ["fa:fa-map-signs Service Registry"]
+        Eureka[("fa:fa-search Eureka Server")]
+    end
+
+    subgraph Services ["MSA Services - CQRS"]
+        CommandSrv["fa:fa-server <br>Command API Server <br>(1대 Monolith)"]
+        QuerySrv1["fa:fa-server <br>Query API Server 1 <br>(Caffeine L1 Cache)"]
+        QuerySrv2["fa:fa-server <br>Query API Server 2 <br>(Caffeine L1 Cache)"]
+        QuerySrv3["fa:fa-server <br>Query API Server 3 <br>(Caffeine L1 Cache)"]
+    end
+
+    subgraph Global ["fa:fa-globe Global Infrastructure"]
+        Redis[("fa:fa-bolt Redis <br>L2 Cache / RawData")]
+        Kafka[["fa:fa-paper-plane Kafka <br>Event Broker"]]
+    end
+
+    subgraph Persistence ["fa:fa-database Database"]
+        MySQLMaster[("fa:fa-database MySQL <br>Master - Write")]
+        MySQLSlave[("fa:fa-database MySQL <br>Slave - Read Replica")]
+    end
+
+    %% ==========================================
+    %% 2. 연결 및 관계 정의
+    %% ==========================================
+    Client -->|"fa:fa-arrow-right API 요청"| Gateway
+    
+    Gateway -.->|"fa:fa-link 위치 조회"| Eureka
+    CommandSrv -.->|"fa:fa-id-card 서비스 등록"| Eureka
+    QuerySrv1 -.-> Eureka
+    QuerySrv2 -.-> Eureka
+    QuerySrv3 -.-> Eureka
+
+    Gateway ====>|"fa:fa-pencil CUD 요청"| CommandSrv
+    Gateway ====>|"fa:fa-search GET 라우팅"| Query
+```
+
+## 2) 글로벌 L2 캐시(Redis) 도입을 통한 DB 부하 최소화
+- Query 서버가 다중화되면서, 각 서버가 최초 기동 시 트리 빌드를 위해 무거운 "1년 치 Raw 데이터"를 DB에 중복 요청하는 병목 현상이 발생했습니다.
+- 이를 방지하기 위해 **Redis를 글로벌 임시 저장소(L2 캐시)**로 도입했습니다. 최초 1회의 DB 조회 결과만 Redis에 적재하여, 이후 기동되는 Query 서버들은 네트워크 및 I/O 비용을 최소화하며 트리를 빌드할 수 있도록 최적화했습니다.
+
+### 3) Kafka 기반의 분산 캐시 데이터 정합성 보장 (EDA)
+- 다수의 Query 서버가 각자의 메모리에 가진 L1 캐시 데이터 불일치 문제를 해결하기 위해, Kafka 이벤트 브로드캐스팅을 적용했습니다.
+- Command 서버에서 데이터의 수정 및 삭제 요청이 발생하면, 즉시 글로벌 캐시(Redis)의 Raw 데이터를 무효화(Invalidate)하고 Kafka로 '변경 이벤트'를 발행(Publish)합니다.
+- 다중화된 모든 Query 서버는 해당 이벤트를 수신(Consume)하여, DB 재조회 없이 자신의 L1 세그먼트 트리에서 변경된 데이터만 부분 연산(Minus/Add) 하는 방식으로 100% 데이터 정합성을 달성했습니다.
+
