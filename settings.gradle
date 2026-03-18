@@ -4,4 +4,5 @@ include 'growup-command-api'
 include 'growup-query-api'
 include 'growup-eureka-server'
 include 'growup-api-gateway'
+include 'growup-legacy-server'
 
