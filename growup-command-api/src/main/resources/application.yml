@@ -15,6 +15,10 @@ spring:
     properties:
       hibernate:
         format_sql: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
   kafka:
     producer:
       bootstrap-servers: localhost:9092 # 아까 띄운 도커 카프카 주소!

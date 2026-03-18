@@ -8,6 +8,10 @@ spring:
     url: jdbc:mysql://localhost:3307/growup_db
     username: root
     password: root
+  data:
+    redis:
+      host: localhost
+      port: 6379
   kafka:
     consumer:
       bootstrap-servers: localhost:9092
