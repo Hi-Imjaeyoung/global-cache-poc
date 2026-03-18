@@ -4,6 +4,7 @@ import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.example.dto.AllCampaignTypeData;
 import org.example.dto.CampaignDeleteDto;
+import org.example.global.CampaignRedisCacheManager;
 import org.example.service.KeywordCommandService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -17,9 +18,9 @@ import java.util.Map;
 @Component
 @AllArgsConstructor
 public class CampaignDeleteFacade {
-    private final CampaignService campaignService;
     private final KeywordCommandService keywordCommandService;
     private final TreeUpdateEventProducer treeUpdateEventProducer;
+    private final CampaignRedisCacheManager campaignRedisCacheManager;
 
     @Transactional
     public Map<String,Integer> deleteCampaignDataByPeriod(CampaignDeleteDto campaignDeleteDto){
@@ -32,21 +33,13 @@ public class CampaignDeleteFacade {
         extractDeleteData =
                 keywordCommandService.extractDeleteCampaignDataByPeriod(campaignDeleteDto.getStart(),campaignDeleteDto.getEnd(),campaignDeleteDto.getCampaignIds());
         }
-//        Map<String,Integer> result = new HashMap<>();
-//        result.put("keyword",keywordService.deleteKeywordByCampaignIdsAndDate(campaignDeleteDto.getCampaignIds(),campaignDeleteDto.getStart(),campaignDeleteDto.getEnd()));
-//        result.put("margin",marginService.deleteKeywordByCampaignIdsAndDate(campaignDeleteDto.getCampaignIds(),campaignDeleteDto.getStart(),campaignDeleteDto.getEnd()));
-//        List<Long> executionIds = new ArrayList<>();
-//        for(Long campaignId : campaignDeleteDto.getCampaignIds()){
-//            executionIds.addAll(executionService.getMyExecutionData(campaignId).stream().map(ExecutionMarginResDto::getExeId).toList());
-//        }
-//        result.put("campaignOptionDetail",campaignOptionDetailsService.deleteKeywordByExecutionIdsAndDate(executionIds,campaignDeleteDto.getStart(),campaignDeleteDto.getEnd()));
-//        result.put("memo",memoService.deleteKeywordByCampaignIdsAndDate(campaignDeleteDto.getCampaignIds(),campaignDeleteDto.getStart(),campaignDeleteDto.getEnd()));
+        keywordCommandService.deleteKeywordByCampaignIdsAndDate(campaignDeleteDto.getCampaignIds(),campaignDeleteDto.getStart(),campaignDeleteDto.getEnd());
         if(checkThreshold && extractDeleteData != null){
             int year = campaignDeleteDto.getStart().getYear();
+            campaignRedisCacheManager.removeCacheData(email,year);
             treeUpdateEventProducer.sendUpdateEvent(email,year,extractDeleteData);
         }else{
             int year = campaignDeleteDto.getStart().getYear();
-            // 임계값 초과 요청으로 인한 삭제 요청 이벤트 발생
 //            treeUpdateEventProducer.sendUpdateEvent();
         }
         return new HashMap<>();
