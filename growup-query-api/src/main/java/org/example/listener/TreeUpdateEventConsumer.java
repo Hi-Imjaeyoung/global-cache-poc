@@ -32,14 +32,15 @@ public class TreeUpdateEventConsumer {
             String memberEmail = event.memberEmail();
             Map<LocalDate, AllCampaignTypeData> deltaData = event.deltaData();
             int year = event.year();
-            log.info("[Kafka 수신 완료] 회원: {}, 수신된 변화량 크기: {}일치", memberEmail, deltaData.size());
+            log.debug("[Kafka 수신 완료] 회원: {}, 수신된 변화량 크기: {}일치", memberEmail, deltaData.size());
             if(lazySegmentTreeService.isTreeBuild(memberEmail,year)){
 //                applicationEventPublisher.publishEvent(event);
                 // 불필요한 비동기 작업 제거.
                 lazySegmentTreeService.updateTreeByPeriodData(memberEmail,deltaData);
-                log.info("[트리 업데이트 완료] {} 님의 메모리 캐시가 최신화되었습니다.", memberEmail);
+                log.debug("[트리 업데이트 완료] {} 님의 메모리 캐시가 최신화되었습니다.", memberEmail);
+                return;
             }
-            log.info("[트리 업데이트 미실시] {} 님의 {} 년 트리가 존재하지 않습니다",memberEmail,year);
+            log.debug("[트리 업데이트 미실시] {} 님의 {} 년 트리가 존재하지 않습니다",memberEmail,year);
         } catch (JsonProcessingException e) {
             log.error("[Kafka 수신 실패] JSON 파싱 에러! 메시지: {}, 원인: {}", message, e.getMessage());
         } catch (Exception e) {

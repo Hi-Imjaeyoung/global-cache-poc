@@ -23,10 +23,10 @@ public class TreeUpdateEventProducer {
 
     public void sendUpdateEvent(String email,int year,Map<LocalDate, AllCampaignTypeData> deletedData) {
         try {
-            TreeUpdateEvent event = new TreeUpdateEvent(email,year ,deletedData);
+            TreeUpdateEvent event = new TreeUpdateEvent(email,year,deletedData);
             String message = objectMapper.writeValueAsString(event);
             kafkaTemplate.send(TOPIC,email,message);
-            log.info("🚀 [Kafka 이벤트 발행 완료] 토픽: {}, 메시지: {}", TOPIC, message);
+            log.debug("[Kafka 이벤트 발행 완료] 토픽: {}, 메시지: {}", TOPIC, message);
         }catch (JsonProcessingException e){
             log.error("update 이벤트 발행 중 Json 변환 에러 발생 에러 메시지 :{}",e.getMessage());
         }
