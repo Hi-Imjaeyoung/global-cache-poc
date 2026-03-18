@@ -19,7 +19,7 @@ public class CampaignDeleteDto {
     public boolean checkThreshold(){
         if(start.getYear() == end.getYear()){
             long daysBetween = ChronoUnit.DAYS.between(start, end);
-            return daysBetween >= 40;
+            return daysBetween <= 40;
         }
         return false;
     }
