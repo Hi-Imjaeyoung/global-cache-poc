@@ -35,7 +35,7 @@
 * 다중화된 모든 Query 서버는 해당 이벤트를 수신(Consume)하여, DB 재조회 없이 자신의 L1 세그먼트 트리에서 변경된 데이터만 부분 연산(Minus/Add) 하는 방식으로 100% 데이터 정합성을 달성했습니다.
 
 <div align="center">
-    <img width="80%" alt="Architecture Diagram" src="https://github.com/user-attachments/assets/f695e8ed-a974-4621-a331-c6f2fd9c4cc6" />
+      <img height="80%" alt="Image" src="https://github.com/user-attachments/assets/f695e8ed-a974-4621-a331-c6f2fd9c4cc6" />
 </div>
 
 ---
@@ -43,7 +43,7 @@
 ## 4. 성능 테스트 및 분산 환경 정합성 검증
 
 ### 1) MSA 환경에서의 부하 테스트 결과 및 안정성 확인
-k6 부하 테스트를 통해 아키텍처의 높은 안정성과 Cache Warming 생태를 검증했습니다. [[부하 테스트 스크립트 (Link)]]()
+k6 부하 테스트를 통해 아키텍처의 높은 안정성과 Cache Warming 생태를 검증했습니다. [부하 테스트 스크립트 (Link)](https://github.com/Hi-Imjaeyoung/global-cache-poc/blob/5bd0861f96d33569247180796840b96baa34c591/k6Test/load-test.js)
 
 * **부하 테스트 결과 (VUs 500, 혼합 부하)**
 
@@ -59,13 +59,13 @@ k6 부하 테스트를 통해 아키텍처의 높은 안정성과 Cache Warming 
 > 극한의 컨텍스트 스위칭 속에서도 **에러율 0%** 를 방어해 냈으며, 실제 독립된 클라우드 노드(EC2) 환경에 배포 시 **단일 서버의 초고속 응답을 유지한 채 무한한 트래픽 확장이 가능한 아키텍처**임을 확인했습니다.
 
 ### 2) 분산 환경 데이터 정합성 완벽 검증
-Command 서버에서 데이터의 수정/삭제가 발생했을 때, 스케일 아웃된 다수의 Query 서버들이 각자의 로컬(L1) 캐시 트리를 정확히 동기화하는지 자체 E2E 스크립트로 검증했습니다. [[정합성 검증 테스트 코드 (Link)]]()
+Command 서버에서 데이터의 수정/삭제가 발생했을 때, 스케일 아웃된 다수의 Query 서버들이 각자의 로컬(L1) 캐시 트리를 정확히 동기화하는지 자체 E2E 스크립트로 검증했습니다. [정합성 검증 테스트 코드 (Link)](https://github.com/Hi-Imjaeyoung/global-cache-poc/blob/5bd0861f96d33569247180796840b96baa34c591/k6Test/consistency-test.js)
 
 * **검증 시나리오:** Command 서버 삭제 요청(CUD) ➡️ Kafka 이벤트 브로드캐스팅 ➡️ 3대의 Query 서버 개별 타격 및 응답값 비교
 * **정합성 테스트 결과:**
 
 <div align="center">
-    <img width="80%" alt="Consistency Test Result" src="" />
+    <img width="80%" alt="Consistency Test Result" src="https://github.com/user-attachments/assets/3e7fd89d-7631-49db-87d3-c4481480fd7b" />
 </div>
 
 > **DB I/O 제로(0) 및 완벽한 결과적 일관성 달성** <br>
