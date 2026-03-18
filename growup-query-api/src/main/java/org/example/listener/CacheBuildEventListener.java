@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.dto.AllCampaignTypeData;
 import org.example.exception.ErrorCode;
 import org.example.exception.GrouException;
+import org.example.global.CampaignRedisCacheManager;
 import org.example.service.KeywordService;
 import org.example.service.LazySegmentTreeService;
 import org.springframework.stereotype.Component;
@@ -25,33 +26,49 @@ public class CacheBuildEventListener {
 
     private final LazySegmentTreeService lazySegmentTreeService;
     private final KeywordService keywordService;
+    private final CampaignRedisCacheManager campaignRedisCacheManager;
     private final Executor ioExecutor;  // ioExecutor 빈도 주입받아야 함!
     private final Executor cpuExecutor;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleTreeBuildEvent(TreeBuildEvent event) {
-        CompletableFuture.runAsync(() -> {
-            // Event가 Thread Safe 한지 체크!
-            String email = event.getEmail();
-            int year = event.getYear();
+        String email = event.getEmail();
+        int year = event.getYear();
+        CompletableFuture.supplyAsync(() -> {
             if (lazySegmentTreeService.treeIsBuilding(email, year)) {
                 log.info("Tree is Already Building! email: {}, year: {}", email, year);
-                return;
+                return null;
             }
+            AllCampaignTypeData[] savedData = campaignRedisCacheManager.getCachedRawData(email, year);
+            if (savedData != null) {
+                log.debug("Redis 캐시 히트! DB 조회 생략.");
+                return savedData;
+            }
+            log.debug("Redis 캐시 미스! DB 원본 조회 시작.");
             LocalDate startDate = LocalDate.of(year, 1, 1);
             LocalDate endDate = LocalDate.of(year, 12, 31);
-            Map<Integer, AllCampaignTypeData> dbResult= keywordService.
-                    getAllTypeOfCampaignAdCostSumAndAdSaleSumByPeriodAndEmailByDate(startDate, endDate,email);
-            CompletableFuture.runAsync(() -> {
+            AllCampaignTypeData[] dbResult = keywordService
+                    .getAllTypeOfCampaignAdCostSumAndAdSaleSumByPeriodAndEmailByDate(startDate, endDate, email);
+            campaignRedisCacheManager.saveRawData(email, year, dbResult);
+            return dbResult;
+            }, CompletableFuture.delayedExecutor(1000, TimeUnit.MILLISECONDS, ioExecutor))
+            .thenAcceptAsync(data -> {
+                if (data == null) return;
                 try {
-                  lazySegmentTreeService.buildTree(email,year,dbResult);
+                    log.info("메모리 세그먼트 트리 빌드 시작...");
+                    lazySegmentTreeService.buildTree(email, year, data);
+                    log.info("트리 빌드 완료!");
                 } catch (Exception e) {
                     log.error("트리 빌드 중 에러 발생", e);
                     throw new GrouException(ErrorCode.UNKNOWN_ERROR);
                 } finally {
-                    lazySegmentTreeService.removeTreeBuildingKey(email,year); // 키 제거 확실히!
+                    lazySegmentTreeService.removeTreeBuildingKey(email, year);
                 }
-            }, cpuExecutor);
-        }, CompletableFuture.delayedExecutor(500, TimeUnit.MILLISECONDS, ioExecutor));
+            }, cpuExecutor)
+            .exceptionally(e -> {
+                log.error("비동기 트리 빌드 파이프라인 전체에서 치명적 에러 발생!", e);
+                lazySegmentTreeService.removeTreeBuildingKey(email, year);
+                return null;
+            });
     }
 }
