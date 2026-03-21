@@ -61,7 +61,7 @@ public class LazySegmentTreeService {
     // key : email
     private final Cache<String, UserSegmentTree> lazyCacheTree = Caffeine.newBuilder()
             .expireAfterAccess(1, TimeUnit.HOURS)
-            .maximumSize(5000)
+            .maximumSize(500)
             .build();
 
     private final Set<String> buildingInProgress = ConcurrentHashMap.newKeySet();
