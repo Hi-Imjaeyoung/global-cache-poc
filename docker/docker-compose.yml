@@ -2,11 +2,19 @@ version: '3.8'
 
 services:
   kafka:
-    # 🔥 카프카 공식 개발사가 만든 로컬 전용 KRaft 이미지! (태그 에러 절대 안 남)
     image: confluentinc/confluent-local:7.5.0
     container_name: local-kafka
     ports:
       - "9092:9092"
+    environment:
+      # 1. 🚨 반장님 전용 문(CONTROLLER://0.0.0.0:29093) 추가!
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093
+      # 2. 밖에서 물어볼 때 대답하는 이정표는 그대로! (반장님 문은 외부로 안 알려줘도 됨)
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      # 3. 🚨 반장님 문(CONTROLLER)도 평문(PLAINTEXT)으로 통신한다고 추가!
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      # 4. 🚨 카프카한테 "저 CONTROLLER가 반장님 문이야!" 라고 확실히 짚어주기!
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
     deploy:
       resources:
         limits:
@@ -45,3 +53,15 @@ services:
       - --read-only=1                 # ★ Slave는 무조건 읽기 전용으로 잠금!
     depends_on:
       - mysql-master
+
+  kafka-ui:
+    container_name: kafka-ui
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "8989:8080"  # 접속은 localhost:8989 로! (내부 포트는 8080 고정이야)
+    environment:
+      # 동적 설정 파일 마운트 방식은 버리고 직관적으로 가자!
+      KAFKA_CLUSTERS_0_NAME: "Jaeyoung-Kafka" # UI 화면에 뜰 예쁜 클러스터 이름 (맘대로)
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka:29092" # 🚨 [제일 중요!!]
+    depends_on:
+      - kafka # 네 파일에 있는 카프카 컨테이너 서비스 이름과 맞춰줘!
