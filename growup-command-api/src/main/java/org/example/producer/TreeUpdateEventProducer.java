@@ -18,7 +18,7 @@ import java.util.Map;
 public class TreeUpdateEventProducer {
 
     private final KafkaTemplate<String, String> kafkaTemplate;
-    private static final String TOPIC = "tree-update-topic";
+    private static final String TOPIC = "tree-update";
     private final ObjectMapper objectMapper;
 
     public void sendUpdateEvent(String email,int year,Map<LocalDate, AllCampaignTypeData> deletedData) {
