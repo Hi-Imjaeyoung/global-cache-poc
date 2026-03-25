@@ -9,6 +9,22 @@
 따라서 본 프로젝트에서는 실제 MSA 환경(CQRS)을 구축하여 해당 문제 상황을 재현하고, **"Kafka와 Redis를 활용한 이벤트 주도 아키텍처(EDA)"** 를 도입하여 다중 서버 환경에서의 데이터 정합성 문제를 완벽하게 해결했습니다.
 
 ---
+## TODO
+
+- ### Architecture
+  - [ ] Query-Server 조회용 NoSQL DB를 도입하여 CQRS 패턴 최적화
+- ### Kafka
+  - [ ] 최종 일관성 문제
+  - [ ] SaGa 패턴 도입
+  - [ ] OutBox 패턴 도입
+  - [ ] DMQ 도입
+- ### WebFlux 
+  - [ ] Circuit Breaker 도입
+  - [ ] 해시 기반 라우팅 도입
+- ### Redis 
+  - [ ] 분산 락 도입
+
+---
 
 ## 2. 프로젝트 기술 스택
 
@@ -92,6 +108,9 @@ global-cache-poc
 * 다수의 Query 서버가 각자의 **메모리에 가진 L1 캐시 데이터 불일치 문제**를 해결하기 위해, **Kafka 이벤트 브로드캐스팅**을 적용했습니다.
 * Command 서버에서 데이터의 수정 및 삭제 요청이 발생하면 ➡️ 즉시 글로벌 캐시(Redis)의 Raw 데이터를 무효화(Invalidate)하고 ➡️ Kafka로 '변경 이벤트'를 발행(Publish)합니다.
 * 다중화된 모든 Query 서버는 해당 이벤트를 수신(Consume)하여, DB 재조회 없이 자신의 L1 세그먼트 트리에서 변경된 데이터만 부분 연산(Minus/Add) 하는 방식으로 100% 데이터 정합성을 달성했습니다.
+
+
+### 4) Kafka DeadMessageQueue 도입 
 
 ---
 
