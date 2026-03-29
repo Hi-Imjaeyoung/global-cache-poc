@@ -58,6 +58,7 @@ public class CacheBuildEventListener {
                     log.info("메모리 세그먼트 트리 빌드 시작...");
                     lazySegmentTreeService.buildTree(email, year, data);
                     log.info("트리 빌드 완료!");
+                    log.info("현재 트리 메모리 크기는 {}",lazySegmentTreeService.getTreeMemory(email));
                 } catch (Exception e) {
                     log.error("트리 빌드 중 에러 발생", e);
                     throw new GrouException(ErrorCode.UNKNOWN_ERROR);

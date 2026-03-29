@@ -26,7 +26,7 @@ public class TreeUpdateEventConsumer {
     private final ApplicationEventPublisher applicationEventPublisher;
     @KafkaListener(
             topics = "tree-update",
-            groupId = "query-api-group-${random.uuid}"
+            groupId = "query-consumer-group"
     )
     public void listenTreeUpdate(String message) throws JsonProcessingException {
         String memberEmail = null;
@@ -35,7 +35,7 @@ public class TreeUpdateEventConsumer {
             memberEmail = event.memberEmail();
             Map<LocalDate, AllCampaignTypeData> deltaData = event.deltaData();
             int year = event.year();
-            log.debug("[Kafka 수신 완료] 회원: {}, 수신된 변화량 크기: {}일치", memberEmail, deltaData.size());
+            log.info("[Kafka 수신 완료] 회원: {}, 수신된 변화량 크기: {}일치", memberEmail, deltaData.size());
             if (lazySegmentTreeService.isTreeBuild(memberEmail, year)) {
 //                applicationEventPublisher.publishEvent(event);
                 // 불필요한 비동기 작업 제거.

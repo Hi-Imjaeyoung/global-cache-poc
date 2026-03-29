@@ -24,7 +24,8 @@ public class MemberController {
     }
 
     @GetMapping("/test/event")
-    public void eventPublishTest(@RequestParam("email") String email){
-        treeUpdateEventProducer.sendUpdateEvent(email,2026, Map.of(LocalDate.now(),new AllCampaignTypeData()));
+    public void eventPublishTest(@RequestParam("email") String email,
+                                 @RequestParam("id") Long id){
+        treeUpdateEventProducer.sendUpdateEvent(email,id,2026,Map.of(LocalDate.now(),new AllCampaignTypeData()));
     }
 }
