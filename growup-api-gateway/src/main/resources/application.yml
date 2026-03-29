@@ -15,7 +15,7 @@ spring:
 
         # 2. 읽기 요청 (Query) 라우팅
         - id: query-service
-          uri: lb://QUERY-API    # 🔥 유레카에 'QUERY-API'라는 이름으로 등록된 서버들 중 하나로 뺑뺑이(LoadBalancing) 돌려라!
+          uri: lb://QUERY-SERVICE   # 🔥 유레카에 'QUERY-API'라는 이름으로 등록된 서버들 중 하나로 뺑뺑이(LoadBalancing) 돌려라!
           predicates:
             - Path=/api/query/**
 eureka:
