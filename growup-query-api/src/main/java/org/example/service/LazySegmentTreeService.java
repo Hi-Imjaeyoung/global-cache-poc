@@ -5,6 +5,8 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.dto.AllCampaignTypeData;
+import org.openjdk.jol.info.ClassLayout;
+import org.openjdk.jol.info.GraphLayout;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -237,5 +239,12 @@ public class LazySegmentTreeService {
         int mid = (rootS + rootE)/2;
         findAndUpdateTargetNode(segmentNodeData,rootS,mid,target,changedData);
         findAndUpdateTargetNode(segmentNodeData,mid+1,rootE,target,changedData);
+    }
+
+    public long getTreeMemory(String email){
+        // (보너스) 어떤 객체들이 메모리를 파먹고 있는지 통계로 보고 싶다면?
+//        System.out.println(GraphLayout.parseInstance(lazyCacheTree).toFootprint());
+        UserSegmentTree tree = lazyCacheTree.asMap().get(email);
+        return GraphLayout.parseInstance(tree).totalSize();
     }
 }
