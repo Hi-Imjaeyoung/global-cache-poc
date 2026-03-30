@@ -17,7 +17,6 @@ dependencies {
     // 3. java.lang.NoClassDefFoundError 방지 (이거 없으면 가끔 에러 터짐)
     annotationProcessor "jakarta.persistence:jakarta.persistence-api"
     annotationProcessor "jakarta.annotation:jakarta.annotation-api"
-    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
     // Json 변환을 위한 라이브러리 -> 절대 Spring WebMVC 의존성을 도입하지 않겠다는 나의 굳은 의지.
     implementation 'org.springframework.boot:spring-boot-starter-json'
