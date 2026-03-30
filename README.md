@@ -38,11 +38,14 @@
     - 기존 BroadCasting 구조는 서버 내 해당 유저의 데이터가 없을 시 이벤트 무시, 이로 인한 L2의 정합성 오염 발생 가능성 확인
     - 분산 환경에서 서버의 수는 유동적으로 변화 가능, 따라 커스텀 라우팅 설정이 항상 특정 멤버의 특정 서버를 보장하지 못함.
   - [Kafka] PartitionKey 해싱을 통한 서버의 이벤트의 책임 강화
-    - Query 서버들의 Group ID를 동일화 하여, BroadCasting 구조 탈피
-    - Member 의 PK를 통한 PartitionKey 해싱을 통한 각 서버의 이벤트 책임 강화
+    - Query 서버들의 Group ID를 동일화 하여, BroadCasting 구조 탈피.
+    - Member 의 PK를 통한 PartitionKey 해싱을 통한 각 서버의 이벤트 책임 강화.
     - 서버의 비정상적인 종료에 따른, 자동 Partition 재할당 확인.
-  - [Redis] 회원 1명의 1년 트리 데이터 측정을 통한 L2 데이터 구조 변경 (원문 데이터 -> 캐싱 트리 데이터 ) 
-
+  - [Redis] 회원 1명의 1년 트리 데이터 측정을 통한 L2 데이터 구조 변경 (원문 데이터 -> 캐싱 트리 데이터 )
+    - 구조 변경에 따른 세그먼트 트리 빌드, 업데이트, 변수 대폭 수정.
+    - 캐싱 무효화 "지연 이중 삭제" 도입에 따른 Pub/Sub 기능 추가.
+    - command 모듈 Redis 의존성 제거 및 Query 모듈로 격리. 
+  - [Docs] mermaid 작성
 ---
 
 ## 2. 프로젝트 기술 스택
@@ -109,6 +112,44 @@ global-cache-poc
 <div align="center">
       <img height="80%" alt="Image" src="https://github.com/user-attachments/assets/f695e8ed-a974-4621-a331-c6f2fd9c4cc6" />
 </div>
+
+````mermaid
+sequenceDiagram
+    autonumber
+    
+    actor User as Client
+    participant Cmd as Command Server
+    participant Kafka as Kafka (tree-update)
+    participant QA as Query Server A<br/>(Event Consumer)
+    participant QB as Query Server B<br/>(Subscriber)
+    participant Redis as Redis (L2 , PubSub)
+    participant DB as MySQL (Master)
+
+    User->>Cmd: 결제/수정 요청 (CUD)
+    Cmd->>DB: 원장 데이터 업데이트
+    Cmd->>Kafka: 이벤트 발행 (Email, 변경분)
+    
+    Note over Kafka, QA: ⚡ 비동기 이벤트 스트리밍
+    Kafka->>QA: 이벤트 수신 (@KafkaListener)
+    
+    Note over QA, Redis: [1차] L1 캐시 무효화
+    QA->>Redis: Pub/Sub 방송 송출 (Evict L1)
+    Redis-->>QA: L1 캐시 삭제 (스스로 청소)
+    Redis-->>QB: L1 캐시 삭제 (동기화)
+    
+    Note over QA, Redis:[L2 업데이트] 세그먼트 트리 배열 연산
+    Redis->>QA: L2 트리 데이터 Get 
+    QA->>QA: L1/L2 배열 덧셈 로직 수행 
+    QA->>Redis: 최신 L2 트리 Set
+    
+    Note over QA, QA: CompletableFuture 비동기 지연 실행
+    QA-xQA: 500ms 대기 (논블로킹)...
+    
+    Note over QA, Redis: [2차] 지연 이중 삭제 
+    QA->>Redis: Pub/Sub 2차 방송 송출 (Evict L1)
+    Redis-->>QA: L1 캐시 2차 삭제
+    Redis-->>QB: L1 캐시 2차 삭제
+````
 
 
 ----
