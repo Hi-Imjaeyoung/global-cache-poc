@@ -5,12 +5,10 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.dto.AllCampaignTypeData;
-import org.openjdk.jol.info.ClassLayout;
 import org.openjdk.jol.info.GraphLayout;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,42 +19,16 @@ import java.util.concurrent.atomic.LongAdder;
 @Slf4j
 @AllArgsConstructor
 public class LazySegmentTreeService {
-    private final LongAdder hitCount = new LongAdder();
-    private final LongAdder requestCount = new LongAdder();
-
-    private static class SegmentNodeData {
-        // key : My bitPacking
-        Map<Integer, AllCampaignTypeData> dataMap = new ConcurrentHashMap<>();
-
-        public boolean containsKey(int key) {
-            return dataMap.containsKey(key);
-        }
-
-        public AllCampaignTypeData getCampaignAnalysisDto(int key) {
-            return dataMap.get(key);
-        }
-
-        public void put(int key, AllCampaignTypeData data) {
-            dataMap.put(key, data);
-        }
-    }
-
     private static class UserSegmentTree {
         // key : year
-        Map<Integer, SegmentNodeData> treeMap = new ConcurrentHashMap<>();
+        Map<Integer, AllCampaignTypeData[]> treeMap = new ConcurrentHashMap<>();
 
-        public SegmentNodeData get(int key) {
+        public AllCampaignTypeData[] get(int key) {
             return treeMap.get(key);
         }
-
-        public void put(int key, SegmentNodeData data) {
-            treeMap.put(key, data);
-        }
-
         public boolean containsKey(int year) {
             return treeMap.containsKey(year);
         }
-
         public void remove(int year){treeMap.remove(year);}
     }
 
@@ -68,28 +40,15 @@ public class LazySegmentTreeService {
 
     private final Set<String> buildingInProgress = ConcurrentHashMap.newKeySet();
 
-    public Long getCacheHitCount(){
-        return hitCount.sum();
-    }
-
-    private SegmentNodeData getSegmentNodeDataSafe(String email, int year) {
+    private AllCampaignTypeData[] getSegmentTreeSafe(String email, int year) {
         return lazyCacheTree
                 .get(email, k -> new UserSegmentTree()) // 유저 없으면 생성
                 .treeMap
-                .computeIfAbsent(year, k -> new SegmentNodeData()); // 연도 없으면 생성
-    }
-
-    public int makeKey(int start, int end) {
-        return (start << 9) | end;
+                .computeIfAbsent(year, k -> new AllCampaignTypeData[370*4]); // 연도 없으면 생성
     }
 
     public int convertLocalDateToCount(LocalDate localDate) {
-        LocalDate startOfYear = LocalDate.of(localDate.getYear(), 1, 1);
-        return (int) ChronoUnit.DAYS.between(startOfYear, localDate) + 1;
-    }
-
-    public LocalDate convertCountToLocalDate(int year, int count) {
-        return LocalDate.of(year, 1, 1).plusDays(count - 1);
+        return localDate.getDayOfYear();
     }
 
     public boolean isTreeBuild(String email, int year){
@@ -110,37 +69,17 @@ public class LazySegmentTreeService {
         int startCount = convertLocalDateToCount(start);
         int endCount = convertLocalDateToCount(end);
         if(start.getYear() == end.getYear()){
-            return find(email,start.getYear(),nodeStart,nodeEnd,startCount,endCount);
+            AllCampaignTypeData[] tree = lazyCacheTree.asMap().get(email).get(start.getYear());
+            return findNode(tree,1,nodeStart,nodeEnd,startCount,endCount);
         }
-        AllCampaignTypeData preYear = find(email,start.getYear(),nodeStart,nodeEnd,startCount,nodeEnd);
+        AllCampaignTypeData[] tree = lazyCacheTree.asMap().get(email).get(start.getYear());
+        AllCampaignTypeData preYear = findNode(tree,1,nodeStart,nodeEnd,startCount,nodeEnd);
         if(nodeEnd == 366 && !end.isLeapYear() ){
             nodeEnd--;
         }
-        AllCampaignTypeData postYear = find(email,end.getYear(),nodeStart,nodeEnd,nodeStart,endCount);
+        tree = lazyCacheTree.asMap().get(email).get(end.getYear());
+        AllCampaignTypeData postYear = findNode(tree,1,nodeStart,nodeEnd,nodeStart,endCount);
         return  postYear.sum(preYear);
-    }
-
-    public AllCampaignTypeData find(String email, int year, int nodeStart, int nodeEnd, int targetStart, int targetEnd) {
-        if (targetEnd < nodeStart || targetStart > nodeEnd) return new AllCampaignTypeData();
-        if (targetStart <= nodeStart && nodeEnd <= targetEnd) {
-            return getOrLoadNode(email,year, nodeStart, nodeEnd);
-        }
-        int mid = (nodeStart + nodeEnd) / 2;
-        return find(email,year, nodeStart, mid, targetStart, targetEnd).sum(find(email,year, mid + 1, nodeEnd, targetStart, targetEnd));
-    }
-
-    private AllCampaignTypeData getOrLoadNode(String email, int year, int start, int end) {
-        requestCount.increment();
-        int key = makeKey(start, end);
-        SegmentNodeData segmentNodeData = getSegmentNodeDataSafe(email,year);
-        if (segmentNodeData.containsKey(key)) {
-            hitCount.increment();
-            log.debug("캐싱 hit! key : " + key);
-            return segmentNodeData.getCampaignAnalysisDto(key);
-        }else {
-            log.error("트리 구조에 누락된 노드가 존재합니다. key : {}",key);
-            return new AllCampaignTypeData();
-        }
     }
     public void removeTreeBuildingKey(String email, int year){
         String key = email+":"+year;
@@ -151,43 +90,42 @@ public class LazySegmentTreeService {
         String key = email+":"+year;
         return !buildingInProgress.add(key);
     }
-    public void buildTree(String email, int year, AllCampaignTypeData[] dailyDataMap){
-        SegmentNodeData segmentNodeData = getSegmentNodeDataSafe(email,year);
-        int nodeEnd = LocalDate.of(year,1,1).isLeapYear() ? 366 : 365;
-        fillLeafNodes(segmentNodeData, dailyDataMap, nodeEnd);
-        buildTree(segmentNodeData, 1, nodeEnd);
+
+    public AllCampaignTypeData[] startBuildTree(String email, int year, AllCampaignTypeData[] rawData){
+        removeTreeDataByEmailAndYear(email,year);
+        AllCampaignTypeData[] tree = getSegmentTreeSafe(email,year);
+        int start = 1;
+        int end = 365;
+        if(LocalDate.of(year,1,1).isLeapYear()) end++;
+        buildTree(tree,rawData,1,start,end);
+        return tree;
     }
 
-    private void fillLeafNodes(SegmentNodeData segmentNodeData, AllCampaignTypeData[] dailyDataMap, int end) {
-        for (int i = 1; i <= end; i++) {
-            int leafKey = makeKey(i, i);
-            AllCampaignTypeData data = dailyDataMap[i];
-            segmentNodeData.put(leafKey, data);
+    // arr 구조로 변경된 트리 빌드
+    public AllCampaignTypeData buildTree(AllCampaignTypeData[] tree,
+                                         AllCampaignTypeData[] rawData,
+                                         int node,int start, int end){
+        if(start == end){
+            return tree[node] = rawData[start];
         }
+        int mid = (start + end) / 2;
+        AllCampaignTypeData left = buildTree(tree,rawData,node*2,start,mid);
+        AllCampaignTypeData right = buildTree(tree,rawData,(node*2)+1,mid+1,end);
+        return tree[node] = left.sum(right);
     }
-    private AllCampaignTypeData buildTree(SegmentNodeData segmentNodeData, int startCount, int endCount){
-        if(startCount == endCount) {
-            int key = makeKey(startCount,endCount);
-            return segmentNodeData.getCampaignAnalysisDto(key);
+
+    public AllCampaignTypeData findNode(AllCampaignTypeData[] tree,
+                                        int node,int start, int end,
+                                        int targetS, int targetE){
+        if (targetE < start || targetS > end) return new AllCampaignTypeData();
+        if (targetS <= start && end <= targetE) {
+            return tree[node];
         }
-
-        int mid = (startCount + endCount)/2;
-        AllCampaignTypeData leftValue = buildTree(segmentNodeData,startCount,mid);
-        AllCampaignTypeData rightValue = buildTree(segmentNodeData,mid+1,endCount);
-
-        int key = makeKey(startCount,endCount);
-        AllCampaignTypeData sumValue = leftValue.sum(rightValue);
-        segmentNodeData.put(key,sumValue);
-        return sumValue;
+        int mid = (start + end) / 2;
+        return findNode(tree,2*node,start,mid,targetS,targetE)
+                .sum(findNode(tree,(node*2)+1,mid+1,end,targetS,targetE));
     }
 
-    public void reBuildTree(String email,LocalDate start, LocalDate end){
-        // start와 end의 year이 같을때
-        removeTreeDataByEmailAndYear(email,start.getYear());
-        int startCount = convertLocalDateToCount(start);
-        int endCount = convertLocalDateToCount(end);
-        getOrLoadNode(email,start.getYear(),startCount,endCount);
-    }
     public void removeTreeDataByEmailAndYear(String email, int year){
         // Map의 containsKey + get -> Cache의 getIfPresent
         UserSegmentTree userSegmentTree = lazyCacheTree.getIfPresent(email);
@@ -198,53 +136,50 @@ public class LazySegmentTreeService {
     public void removeAllTreeDataByEmail(String email){
         lazyCacheTree.invalidate(email); // Map의 remove -> Cache의 invalidate
     }
-    private SegmentNodeData getSegmentNodeData(String email, int year){
+    private AllCampaignTypeData[] getSegmentNodeData(String email, int year){
         UserSegmentTree userSegmentTree = lazyCacheTree.getIfPresent(email);
         if(userSegmentTree != null){
             return userSegmentTree.get(year);
         }
         return null;
     }
-    public void updateTreeByPeriodData(String email, Map<LocalDate,AllCampaignTypeData> dataMap){
+    public void updateTreeByPeriodData(AllCampaignTypeData[] oldData, Map<LocalDate,AllCampaignTypeData> dataMap){
         for(LocalDate localDate : dataMap.keySet()){
-            updateDay(email,localDate,dataMap.get(localDate));
+            updateDay(oldData,localDate,dataMap.get(localDate));
         }
     }
 
-    private void updateDay(String email,LocalDate changedDate, AllCampaignTypeData changedData){
+    private void updateDay(AllCampaignTypeData[] oldData,LocalDate changedDate, AllCampaignTypeData changedData){
         int year = changedDate.getYear();
-        SegmentNodeData segmentNodeData = getSegmentNodeData(email,year);
-        if(segmentNodeData == null){
-            return;
-        }
         int changedDateKey = convertLocalDateToCount(changedDate);
         int nodeEnd = changedDate.isLeapYear() ? 366 : 365;
-        findAndUpdateTargetNode(segmentNodeData, 1, nodeEnd, changedDateKey, changedData);
+        findAndUpdateTargetNode(oldData,1, 1, nodeEnd, changedDateKey, changedData);
     }
 
-    private void findAndUpdateTargetNode(SegmentNodeData segmentNodeData,
-                                       int rootS,
-                                       int rootE,
-                                       int target,
-                                       AllCampaignTypeData changedData){
+    private void findAndUpdateTargetNode(AllCampaignTypeData[] tree,
+                                         int node,int rootS,int rootE,int target,
+                                         AllCampaignTypeData changedData){
         if(rootS > target || rootE < target){
             return;
         }
-        int key = makeKey(rootS,rootE);
-        AllCampaignTypeData data = segmentNodeData.getCampaignAnalysisDto(key);
+        AllCampaignTypeData data = tree[node];
         if (data != null) {
             data.minus(changedData);
         }
         if(rootS == rootE) return;
         int mid = (rootS + rootE)/2;
-        findAndUpdateTargetNode(segmentNodeData,rootS,mid,target,changedData);
-        findAndUpdateTargetNode(segmentNodeData,mid+1,rootE,target,changedData);
+        findAndUpdateTargetNode(tree,node*2,rootS,mid,target,changedData);
+        findAndUpdateTargetNode(tree,(node*2)+1,mid+1,rootE,target,changedData);
     }
 
     public long getTreeMemory(String email){
-        // (보너스) 어떤 객체들이 메모리를 파먹고 있는지 통계로 보고 싶다면?
 //        System.out.println(GraphLayout.parseInstance(lazyCacheTree).toFootprint());
         UserSegmentTree tree = lazyCacheTree.asMap().get(email);
         return GraphLayout.parseInstance(tree).totalSize();
+    }
+
+    public void saveBackupTreeData(String email, int year, AllCampaignTypeData[] savedTreeData){
+        UserSegmentTree value = lazyCacheTree.get(email,k-> new UserSegmentTree());
+        value.treeMap.put(year,savedTreeData);
     }
 }

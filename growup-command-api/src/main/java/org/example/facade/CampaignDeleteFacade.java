@@ -2,10 +2,12 @@ package org.example.facade;
 
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import org.example.exception.ErrorCode;
+import org.example.exception.GrouException;
 import org.example.producer.TreeUpdateEventProducer;
 import org.example.dto.AllCampaignTypeData;
 import org.example.dto.CampaignDeleteDto;
-import org.example.global.CampaignRedisCacheManager;
+import org.example.repo.MemberRepository;
 import org.example.service.KeywordCommandService;
 import org.springframework.stereotype.Component;
 
@@ -18,12 +20,14 @@ import java.util.Map;
 public class CampaignDeleteFacade {
     private final KeywordCommandService keywordCommandService;
     private final TreeUpdateEventProducer treeUpdateEventProducer;
-    private final CampaignRedisCacheManager campaignRedisCacheManager;
+    private final MemberRepository memberRepository;
 
     @Transactional
     public Map<String,Integer> deleteCampaignDataByPeriod(CampaignDeleteDto campaignDeleteDto){
         //임계값 확인
         boolean checkThreshold = campaignDeleteDto.checkThreshold();
+        Long memberId = memberRepository.findByEmail(campaignDeleteDto.getEmail())
+                .orElseThrow(()-> new GrouException(ErrorCode.UNKNOWN_ERROR)).getId();
         String email  = campaignDeleteDto.getEmail();
         Map<LocalDate, AllCampaignTypeData> extractDeleteData = null;
         if(checkThreshold){
@@ -34,8 +38,7 @@ public class CampaignDeleteFacade {
         keywordCommandService.deleteKeywordByCampaignIdsAndDate(campaignDeleteDto.getCampaignIds(),campaignDeleteDto.getStart(),campaignDeleteDto.getEnd());
         if(checkThreshold && extractDeleteData != null){
             int year = campaignDeleteDto.getStart().getYear();
-            campaignRedisCacheManager.removeCacheData(email,year);
-            treeUpdateEventProducer.sendUpdateEvent(email,year,extractDeleteData);
+            treeUpdateEventProducer.sendUpdateEvent(email,memberId,year,extractDeleteData);
         }else{
             int year = campaignDeleteDto.getStart().getYear();
 //            treeUpdateEventProducer.sendUpdateEvent();

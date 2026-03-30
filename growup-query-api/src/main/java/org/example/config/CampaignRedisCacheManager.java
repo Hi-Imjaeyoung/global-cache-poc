@@ -1,7 +1,6 @@
-package org.example.global;
+package org.example.config;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -10,7 +9,6 @@ import org.example.dto.AllCampaignTypeData;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -21,7 +19,7 @@ public class CampaignRedisCacheManager {
     private final StringRedisTemplate redisTemplate; // 가장 가볍고 빠른 String 전용 템플릿
     private final ObjectMapper objectMapper;
 
-    public AllCampaignTypeData[] getCachedRawData(String email, int year){
+    public AllCampaignTypeData[] getCachedTreeData(String email, int year){
         String key = "raw-data:"+email+":"+year;
         String json = redisTemplate.opsForValue().get(key);
 
