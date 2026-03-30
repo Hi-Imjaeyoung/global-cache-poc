@@ -4,17 +4,21 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.config.RedisPubSubConfig;
 import org.example.dto.AllCampaignTypeData;
 import org.example.dto.TreeUpdateEvent;
 import org.example.exception.ErrorCode;
 import org.example.exception.GrouException;
+import org.example.config.CampaignRedisCacheManager;
 import org.example.service.LazySegmentTreeService;
-import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
@@ -23,7 +27,9 @@ public class TreeUpdateEventConsumer {
 
     private final ObjectMapper objectMapper;
     private final LazySegmentTreeService lazySegmentTreeService;
-    private final ApplicationEventPublisher applicationEventPublisher;
+    private final CampaignRedisCacheManager campaignRedisCacheManager;
+    private final StringRedisTemplate stringRedisTemplate;
+
     @KafkaListener(
             topics = "tree-update",
             groupId = "query-consumer-group"
@@ -33,17 +39,27 @@ public class TreeUpdateEventConsumer {
         try {
             TreeUpdateEvent event = objectMapper.readValue(message, TreeUpdateEvent.class);
             memberEmail = event.memberEmail();
-            Map<LocalDate, AllCampaignTypeData> deltaData = event.deltaData();
+            Map<LocalDate, AllCampaignTypeData> updateData = event.deltaData();
             int year = event.year();
-            log.info("[Kafka 수신 완료] 회원: {}, 수신된 변화량 크기: {}일치", memberEmail, deltaData.size());
-            if (lazySegmentTreeService.isTreeBuild(memberEmail, year)) {
-//                applicationEventPublisher.publishEvent(event);
-                // 불필요한 비동기 작업 제거.
-                lazySegmentTreeService.updateTreeByPeriodData(memberEmail, deltaData);
-                log.debug("[트리 업데이트 완료] {} 님의 메모리 캐시가 최신화되었습니다.", memberEmail);
+            log.debug("[Kafka 수신 완료] 회원: {}, 수신된 변화량 크기: {}일치", memberEmail, updateData.size());
+            // L1 remove Event
+            String invalidationMsg = memberEmail + ":" + year;
+            String topic = RedisPubSubConfig.L1_CACHE_EVICT_TOPIC; // "l1-cache-evict-topic"
+            stringRedisTemplate.convertAndSend(topic, invalidationMsg);
+            log.debug("[1차 L1 삭제 방송 송출] {}", invalidationMsg);
+            // L2 data update & save
+            AllCampaignTypeData[] oldCacheTree = campaignRedisCacheManager.getCachedTreeData(memberEmail, year);
+            if (oldCacheTree == null) {
+                log.debug("[Redis] L2 캐시가 존재하지 않습니다.");
                 return;
             }
-            log.debug("[트리 업데이트 미실시] {} 님의 {} 년 트리가 존재하지 않습니다", memberEmail, year);
+            lazySegmentTreeService.updateTreeByPeriodData(oldCacheTree,updateData);
+            campaignRedisCacheManager.saveRawData(memberEmail,year,oldCacheTree);
+            // L1 remove Event
+            CompletableFuture.runAsync(()->{
+                stringRedisTemplate.convertAndSend(topic, invalidationMsg);
+                log.debug("[2차 L1 삭제 방송 송출] {}", invalidationMsg);
+            },CompletableFuture.delayedExecutor(500, TimeUnit.MILLISECONDS));
         } catch (JsonProcessingException e) {
             log.error("[Kafka 수신 실패] JSON 파싱 에러! 발생 회원: {}, 원인: {}", memberEmail, e.getMessage());
             throw e;
