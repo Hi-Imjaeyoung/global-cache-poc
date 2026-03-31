@@ -6,5 +6,6 @@ import java.util.Map;
 public record TreeUpdateEvent(
         String memberEmail,
         int year,
-        Map<LocalDate, AllCampaignTypeData> deltaData
+        Map<LocalDate, AllCampaignTypeData> deltaData,
+        String eventId
 ) {}

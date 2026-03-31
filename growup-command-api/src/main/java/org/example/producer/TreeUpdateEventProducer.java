@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -24,7 +25,8 @@ public class TreeUpdateEventProducer {
     public void sendUpdateEvent(String email,Long memberId,int year,Map<LocalDate, AllCampaignTypeData> deletedData) {
         try {
             String partitionKey = String.valueOf(memberId);
-            TreeUpdateEvent event = new TreeUpdateEvent(email,year,deletedData);
+            String eventId = UUID.randomUUID().toString();
+            TreeUpdateEvent event = new TreeUpdateEvent(email,year,deletedData,eventId);
             String message = objectMapper.writeValueAsString(event);
             kafkaTemplate.send(TOPIC,email,message)
                             .whenComplete((result,ex)->{
