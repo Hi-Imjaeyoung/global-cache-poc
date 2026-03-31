@@ -9,15 +9,22 @@ spring:
       routes:
         # 1. 쓰기 요청 (Command) 라우팅
         - id: command-service
-          uri: lb://COMMAND-API  # 🔥 유레카에 'COMMAND-API'라는 이름으로 등록된 서버로 보내라! (포트 몰라도 됨)
+          uri: lb://COMMAND-API
           predicates:
             - Path=/api/command/** # 이 경로로 오면 여기로 보냄
 
         # 2. 읽기 요청 (Query) 라우팅
         - id: query-service
-          uri: lb://QUERY-SERVICE   # 🔥 유레카에 'QUERY-API'라는 이름으로 등록된 서버들 중 하나로 뺑뺑이(LoadBalancing) 돌려라!
+          uri: lb://QUERY-SERVICE
           predicates:
             - Path=/api/query/**
+          filters:
+            - name: Retry
+              args:
+                retries: 3 # 최대 3번까지 재시도
+                statuses: BAD_GATEWAY, SERVICE_UNAVAILABLE, INTERNAL_SERVER_ERROR
+                methods: GET
+                exceptions: java.net.ConnectException, java.io.IOException, org.springframework.cloud.gateway.support.NotFoundException
 eureka:
   client:
     service-url:
