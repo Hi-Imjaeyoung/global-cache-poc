@@ -33,7 +33,7 @@
 
 
 ### V 1.1
-  - [Web Flux] 중복되는 트리 빌드를 막기위해, 유저 Id를 통한 커스텀 라우팅 설정
+  - [GateWay] 중복되는 트리 빌드를 막기위해, 유저 Id를 통한 커스텀 라우팅 설정
   - [Kafka] BroadCasting 으로 발행되는 업데이트 이벤트 구조 한계 인식
     - 기존 BroadCasting 구조는 서버 내 해당 유저의 데이터가 없을 시 이벤트 무시, 이로 인한 L2의 정합성 오염 발생 가능성 확인
     - 분산 환경에서 서버의 수는 유동적으로 변화 가능, 따라 커스텀 라우팅 설정이 항상 특정 멤버의 특정 서버를 보장하지 못함.
@@ -46,6 +46,18 @@
     - 캐싱 무효화 "지연 이중 삭제" 도입에 따른 Pub/Sub 기능 추가.
     - command 모듈 Redis 의존성 제거 및 Query 모듈로 격리. 
   - [Docs] mermaid 작성
+
+### V 1.2
+- [GateWay] 
+  - query-server Retry 필터 설정.
+  - 커스텀 로드밸런서 해당 서버 상태 확인 기능 추가. 
+- [Spring]
+  - Query 모듈 Resilience4j 의존성 추가
+  - CircuitBreaker 를 통한 Redis 장애 상태 전파
+  - FallBack Method 추가
+- [Kafka] 멱등성 검증 로직 추가
+- [Redis] 멱등성 키 저장
+- [Redis] L1 무효화 시그널 Pub/Sub 적용
 ---
 
 ## 2. 프로젝트 기술 스택
@@ -169,8 +181,25 @@ sequenceDiagram
 * Command 서버에서 데이터의 수정 및 삭제 요청이 발생하면 ➡️ 즉시 글로벌 캐시(Redis)의 Raw 데이터를 무효화(Invalidate)하고 ➡️ Kafka로 '변경 이벤트'를 발행(Publish)합니다.
 * 다중화된 모든 Query 서버는 해당 이벤트를 수신(Consume)하여, DB 재조회 없이 자신의 L1 세그먼트 트리에서 변경된 데이터만 부분 연산(Minus/Add) 하는 방식으로 100% 데이터 정합성을 달성했습니다.
 
+### 4) 커스텀 분산 라우팅 구현
 
-### 4) Kafka DeadMessageQueue 도입 
+### 5) Kafka Event 구조 변경
+![img_4.png](img_4.png)
+
+![img_5.png](img_5.png)
+
+### 6) L1 무효화 시그널 Pub/Sub 도입
+![img.png](img.png) 
+
+![img_1.png](img_1.png)
+
+![img_2.png](img_2.png)
+
+![img_3.png](img_3.png)
+
+### 7) CircuitBreaker를 통한 장애 전파 및 FallBack 로직 구현
+
+![img_6.png](img_6.png)
 
 ---
 
