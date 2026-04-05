@@ -3,6 +3,7 @@ package org.example.config;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.dto.AllCampaignTypeData;
@@ -19,6 +20,7 @@ public class CampaignRedisCacheManager {
     private final StringRedisTemplate redisTemplate; // 가장 가볍고 빠른 String 전용 템플릿
     private final ObjectMapper objectMapper;
 
+    @CircuitBreaker(name="redisCircuitBreaker",fallbackMethod ="fallbackGetCachedTreeData" )
     public AllCampaignTypeData[] getCachedTreeData(String email, int year){
         String key = "raw-data:"+email+":"+year;
         String json = redisTemplate.opsForValue().get(key);
@@ -34,8 +36,13 @@ public class CampaignRedisCacheManager {
         }
         return null;
     }
+    public AllCampaignTypeData[] fallbackGetCachedTreeData(String email, int year,Throwable t) {
+        log.warn("Redis 장애로 Null을 리턴합니다.");
+        return null;
+    }
 
-    public void saveRawData(String email,int year, AllCampaignTypeData[] rawData){
+    @CircuitBreaker(name="redisCircuitBreaker")
+    public void saveSegTreeData(String email, int year, AllCampaignTypeData[] rawData){
         String key = "raw-data:"+email+":"+year;
         try {
             String json = objectMapper.writeValueAsString(rawData);
@@ -45,6 +52,7 @@ public class CampaignRedisCacheManager {
         }
     }
 
+    @CircuitBreaker(name="redisCircuitBreaker")
     public void removeCacheData(String email, int year){
         String key = "raw-data:"+email+":"+year;
         log.info("Redis 저장 데이터 삭제 키:{}",key);

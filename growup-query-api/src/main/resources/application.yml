@@ -12,6 +12,7 @@ spring:
     redis:
       host: localhost
       port: 6379
+      timeout: 200ms
   kafka:
     consumer:
       group-id: query-consumer-group
@@ -24,6 +25,7 @@ spring:
 logging:
   level:
     root: INFO
+    org.example: debug
     org.apache.kafka: INFO
     org.springframework.kafka: INFO
     org.hibernate.SQL: WARN
@@ -35,3 +37,13 @@ eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
+
+resilience4j.circuitbreaker:
+  instances:
+    redisCircuitBreaker: # 차단기 이름
+      slidingWindowSize: 10 # 최근 10개의 요청을 기준으로 판단
+      failureRateThreshold: 10 # 그 중 50% 이상 실패하면 두꺼비집 내림 (OPEN)
+      waitDurationInOpenState: 10s # OPEN 상태에서 10초 동안은 무조건 Fallback 실행 (Redis 안 찌름)
+      permittedNumberOfCallsInHalfOpenState: 1 # 10초 뒤에 3개만 테스트로 찔러봄 (HALF-OPEN)
+      minimumNumberOfCalls: 5 # 최소 5번은 요청이 들어와야 실패율 계산 시작
+      automaticTransitionFromOpenToHalfOpenEnabled: true
