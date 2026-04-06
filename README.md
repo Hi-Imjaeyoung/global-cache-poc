@@ -114,7 +114,7 @@ global-cache-poc
 
 ## 4. 프로젝트 아키텍처
 
-![img.png](image/전체 아키텍처.png)
+![img.png](image/전체%20아키텍처.png)
 
 ````mermaid
 sequenceDiagram
