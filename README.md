@@ -16,20 +16,6 @@
 따라서 본 프로젝트에서는 실제 MSA 환경(CQRS)을 구축하여 해당 문제 상황을 재현하고, **"Kafka와 Redis를 활용한 이벤트 주도 아키텍처(EDA)"** 를 도입하여 다중 서버 환경에서의 데이터 정합성 문제를 완벽하게 해결했습니다.
 
 ---
-## TODO (프로젝트 완료 후 삭제 예정)
-
-- ### Architecture
-  - [ ] Query-Server 조회용 NoSQL DB를 도입하여 CQRS 패턴 최적화
-- ### Kafka
-  - [ ] 최종 일관성 문제
-  - [ ] SaGa 패턴 도입
-  - [ ] OutBox 패턴 도입
-  - [x] DMQ 도입
-- ### WebFlux 
-  - [ ] Circuit Breaker 도입
-  - [x] 해시 기반 라우팅 도입
-- ### Redis 
-  - [ ] 분산 락 도입
 
 ## 변경 사항
 
