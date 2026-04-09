@@ -59,6 +59,9 @@ public class LazySegmentTreeService {
         }
         return false;
     }
+    public void removeAllTreeData(){
+        lazyCacheTree.invalidateAll();
+    }
 
     public AllCampaignTypeData getCachedOrSelectAllCampaignTypeDataByPeriod(String email,
                                                                     LocalDate start,
@@ -179,6 +182,7 @@ public class LazySegmentTreeService {
     }
 
     public void saveBackupTreeData(String email, int year, AllCampaignTypeData[] savedTreeData){
+        if(savedTreeData == null) return;
         UserSegmentTree value = lazyCacheTree.get(email,k-> new UserSegmentTree());
         value.treeMap.put(year,savedTreeData);
     }
