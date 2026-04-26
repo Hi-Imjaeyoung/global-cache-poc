@@ -25,6 +25,14 @@ services:
     container_name: local-redis
     ports:
       - "6379:6379"
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.5.0
+    container_name: toxiproxy
+    ports:
+      - "8474:8474" # 제어용 API 포트
+      - "8666:8666" # 스프링이 바라볼 프록시 포트
+    depends_on:
+      - redis # Redis가 먼저 뜬 다음에 실행되도록 보장
   mysql-master:
     image: mysql:8.0
     container_name: mysql-master
