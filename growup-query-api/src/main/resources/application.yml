@@ -10,9 +10,8 @@ spring:
     password: root
   data:
     redis:
-      host: localhost
-      port: 6379
-      timeout: 200ms
+      host: 127.0.0.1
+      port: 8666
   kafka:
     consumer:
       group-id: query-consumer-group
@@ -38,12 +37,34 @@ eureka:
     service-url:
       defaultZone: http://localhost:8761/eureka/
 
-resilience4j.circuitbreaker:
-  instances:
-    redisCircuitBreaker: # 차단기 이름
-      slidingWindowSize: 10 # 최근 10개의 요청을 기준으로 판단
-      failureRateThreshold: 10 # 그 중 50% 이상 실패하면 두꺼비집 내림 (OPEN)
-      waitDurationInOpenState: 10s # OPEN 상태에서 10초 동안은 무조건 Fallback 실행 (Redis 안 찌름)
-      permittedNumberOfCallsInHalfOpenState: 1 # 10초 뒤에 3개만 테스트로 찔러봄 (HALF-OPEN)
-      minimumNumberOfCalls: 5 # 최소 5번은 요청이 들어와야 실패율 계산 시작
-      automaticTransitionFromOpenToHalfOpenEnabled: true
+resilience4j:
+  timelimiter:
+    instances:
+      redisTL:
+        # 우리가 기다릴 최대 시간 (0.2초)
+        timeoutDuration: 200ms
+        # 타임아웃 발생 시 실행 중인 스레드를 인터럽트 할지 여부
+        cancelRunningFuture: true
+  circuitbreaker:
+    instances:
+      redisCircuitBreaker: # 차단기 이름
+        slidingWindowSize: 10 # 최근 10개의 요청을 기준으로 판단
+        failureRateThreshold: 15 # 그 중 15% 이상 실패하면 두꺼비집 내림 (OPEN)
+        waitDurationInOpenState: 10s # OPEN 상태에서 10초 동안은 무조건 Fallback 실행 (Redis 안 찌름)
+        permittedNumberOfCallsInHalfOpenState: 3 # 10초 뒤에 3개만 테스트로 찔러봄 (HALF-OPEN)
+        minimumNumberOfCalls: 5 # 최소 5번은 요청이 들어와야 실패율 계산 시작
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+  bulkhead:
+    instances:
+      redisBulkhead:
+        maxConcurrentCalls: 50 # 동시에 50명만 Redis 쪽으로 진입 가능
+        maxWaitDuration: 0 # 자리가 없으면 기다리지 말고 즉시 튕겨라!
+  ratelimiter:
+    instances:
+      dbRateLimiter:
+        # 1초(1s)마다 티켓을 초기화해라
+        limitRefreshPeriod: 1s
+        # 1초에 딱 50명(50번)까지만 DB 조회를 허용해라! (TPS 50)
+        limitForPeriod: 50
+        # 티켓이 없으면 기다리지 말고 즉시 튕겨내라!
+        timeoutDuration: 0s

@@ -15,7 +15,11 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation 'org.springframework.boot:spring-boot-starter-aop'
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("org.testcontainers:toxiproxy:1.20.4")
+    // Testcontainers 핵심 라이브러리
+    testImplementation "org.testcontainers:testcontainers:1.19.0"
+    // JUnit 5와 연동하기 위한 라이브러리 (이게 @Container를 쓰게 해줘!)
+    testImplementation "org.testcontainers:junit-jupiter:1.19.0"
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'com.github.ben-manes.caffeine:caffeine'
     implementation 'org.springframework.kafka:spring-kafka'

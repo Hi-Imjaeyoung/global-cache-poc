@@ -29,4 +29,9 @@ public class CampaignController {
                 .data(totalCampaignsData)
                 .build(),HttpStatus.OK);
     }
+
+    @GetMapping("/health-check")
+    public String health() {
+        return "OK"; // 얘는 아무 잘못이 없어야 함
+    }
 }
