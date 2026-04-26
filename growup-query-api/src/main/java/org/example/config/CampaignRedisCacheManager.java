@@ -3,7 +3,9 @@ package org.example.config;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.dto.AllCampaignTypeData;
@@ -20,7 +22,9 @@ public class CampaignRedisCacheManager {
     private final StringRedisTemplate redisTemplate; // 가장 가볍고 빠른 String 전용 템플릿
     private final ObjectMapper objectMapper;
 
+    @TimeLimiter(name = "redisTL", fallbackMethod = "fallbackGetCachedTreeData")
     @CircuitBreaker(name="redisCircuitBreaker",fallbackMethod ="fallbackGetCachedTreeData" )
+    @Bulkhead(name = "redisBulkhead", fallbackMethod = "fallbackGetCachedTreeData", type = Bulkhead.Type.SEMAPHORE)
     public AllCampaignTypeData[] getCachedTreeData(String email, int year){
         String key = "raw-data:"+email+":"+year;
         String json = redisTemplate.opsForValue().get(key);
