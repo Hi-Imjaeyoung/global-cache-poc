@@ -1,5 +1,6 @@
 plugins {
     id("java")
+    id 'me.champeau.jmh' version '0.7.2'
 }
 
 group = "org.example"
@@ -7,6 +8,9 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
+}
+tasks.named('jmhJar') {
+    zip64 = true
 }
 
 dependencies {
@@ -28,6 +32,8 @@ dependencies {
     implementation 'org.openjdk.jol:jol-core:0.16'
     // Resilience
     implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.1.0'
+
+    jmh 'org.springframework.boot:spring-boot-starter-json'
 }
 
 tasks.test {

@@ -1,4 +1,19 @@
 // 안전한 최신 Gradle 문법으로 변경!
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.3' // 프로젝트 버전에 맞게 조절
+    id 'io.spring.dependency-management' version '1.1.4'
+    // 1. JMH 플러그인 추가
+    id 'me.champeau.jmh' version '0.7.2'
+}
+jmh {
+    fork = 1                 // 환경이 일정하다면 1로 줄여서 시간을 아껴도 됨 (정밀도는 2 이상)
+    warmupIterations = 2     // 간단한 테스트니까 2회 정도로 세팅
+    iterations = 3           // 실제 측정 3회
+    benchmarkMode = ['avgt'] // 평균 시간 측정
+    timeUnit = 'us'
+    resultFormat = 'JSON'
+}
 tasks.bootJar {
     enabled = false
 }
@@ -21,4 +36,6 @@ dependencies {
     // Json 변환을 위한 라이브러리 -> 절대 Spring WebMVC 의존성을 도입하지 않겠다는 나의 굳은 의지.
     implementation 'org.springframework.boot:spring-boot-starter-json'
 
+    testImplementation 'org.openjdk.jmh:jmh-core:1.37'
+    testAnnotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
 }
