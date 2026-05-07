@@ -8,9 +8,11 @@ import org.example.config.CampaignRedisCacheManager;
 import org.example.dto.AllCampaignTypeData;
 import org.example.dto.CampaignAnalysisDto;
 import org.example.dto.TotalCampaignsData;
+import org.example.listener.PrefixBuildEvent;
 import org.example.listener.TreeBuildEvent;
 import org.example.service.KeywordService;
 import org.example.service.LazySegmentTreeService;
+import org.example.service.PrefixSumService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +31,7 @@ public class CampaignTotalDataFacade {
     private final ApplicationEventPublisher eventPublisher;
     private final CircuitBreakerRegistry circuitBreakerRegistry;
     private final CampaignRedisCacheManager campaignRedisCacheManager;
+    private final PrefixSumService prefixSumService;
 
     @Transactional(readOnly = true)
     public TotalCampaignsData getCampaignTotalDataByLazyLoadingTree(String email, LocalDate start, LocalDate end){
@@ -52,6 +55,10 @@ public class CampaignTotalDataFacade {
             return TotalCampaignsData.builder()
                     .adSalesAndAdCostByCampaignName(new HashMap<>())
                     .sumOfAdSalesAndAdCostByCampaignType(new HashMap<>(allCampaignTypeData.getCampaignAnalysisDtoMap()))
+                    .maxAdCost(allCampaignTypeData.getMaxAdCost())
+                    .maxAdSales(allCampaignTypeData.getMaxAdSales())
+                    .minAdCost(allCampaignTypeData.getMinAdCost())
+                    .minAdSales(allCampaignTypeData.getMinAdSales())
                     .build();
         }
         CircuitBreaker.State currentState = circuitBreakerRegistry.circuitBreaker("redisCircuitBreaker").getState();
@@ -63,6 +70,36 @@ public class CampaignTotalDataFacade {
             }
         } else {
             log.warn("서킷 상태가 불완전합니다(State: {}). 빌드 이벤트를 생략하고 DB 원문으로 응답합니다.", currentState);
+        }
+        Map<String, CampaignAnalysisDto> campaignAnalysisDataKeyCampaignType =
+                keywordService.getAllTypeOfCampaignAdCostAndSaleSumByCampaignType(start,end,email);
+        return TotalCampaignsData.builder()
+                .adSalesAndAdCostByCampaignName(new HashMap<>())
+                .sumOfAdSalesAndAdCostByCampaignType(campaignAnalysisDataKeyCampaignType)
+                .build();
+    }
+    @Transactional(readOnly = true)
+    public TotalCampaignsData getCampaignTotalDataByPrefix(String email,LocalDate start,  LocalDate end){
+        AllCampaignTypeData allCampaignTypeData;
+        AllCampaignTypeData[] prefixData = campaignRedisCacheManager.getCachedPrefixData(email,start.getYear());
+        prefixSumService.saveBackupPrefixData(email,start.getYear(),prefixData);
+        if(prefixSumService.hasPrefixData(email,start.getYear())){
+            log.debug("누적합으로 조회합니다. 유저: {}",email);
+            allCampaignTypeData =
+                    prefixSumService.getCachedOrSelectAllCampaignTypeDataByPeriod(email,start,end);
+            return TotalCampaignsData.builder()
+                    .adSalesAndAdCostByCampaignName(new HashMap<>())
+                    .sumOfAdSalesAndAdCostByCampaignType(new HashMap<>(allCampaignTypeData.getCampaignAnalysisDtoMap()))
+                    .maxAdCost(allCampaignTypeData.getMaxAdCost())
+                    .maxAdSales(allCampaignTypeData.getMaxAdSales())
+                    .minAdCost(allCampaignTypeData.getMinAdCost())
+                    .minAdSales(allCampaignTypeData.getMinAdSales())
+                    .build();
+        }
+        log.debug("캐시 미스! 비동기 누적합 설정 이벤트를 발행합니다. 유저: {}", email);
+        eventPublisher.publishEvent(new PrefixBuildEvent(email, start.getYear()));
+        if(end.getYear() != start.getYear()) {
+            eventPublisher.publishEvent(new PrefixBuildEvent(email, end.getYear()));
         }
         Map<String, CampaignAnalysisDto> campaignAnalysisDataKeyCampaignType =
                 keywordService.getAllTypeOfCampaignAdCostAndSaleSumByCampaignType(start,end,email);

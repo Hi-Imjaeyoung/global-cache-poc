@@ -30,6 +30,15 @@ public class CampaignController {
                 .build(),HttpStatus.OK);
     }
 
+    @GetMapping("/totalAnalysisData/Prefix")
+    public ResponseEntity<CommonResponse<TotalCampaignsData>> campaignTotalAnalysisByPrefix(@ModelAttribute CampaignTotalDataRequestDto campaignTotalDataRequestDto){
+        TotalCampaignsData totalCampaignsData =
+                campaignTotalDataFacade.getCampaignTotalDataByPrefix(campaignTotalDataRequestDto.getEmail(),campaignTotalDataRequestDto.getStart(),campaignTotalDataRequestDto.getEnd());
+        return new ResponseEntity<>(CommonResponse.<TotalCampaignsData>builder("success get")
+                .data(totalCampaignsData)
+                .build(),HttpStatus.OK);
+    }
+
     @GetMapping("/health-check")
     public String health() {
         return "OK"; // 얘는 아무 잘못이 없어야 함

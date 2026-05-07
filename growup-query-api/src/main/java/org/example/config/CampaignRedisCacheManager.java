@@ -22,7 +22,7 @@ public class CampaignRedisCacheManager {
     private final StringRedisTemplate redisTemplate; // 가장 가볍고 빠른 String 전용 템플릿
     private final ObjectMapper objectMapper;
 
-    @TimeLimiter(name = "redisTL", fallbackMethod = "fallbackGetCachedTreeData")
+//    @TimeLimiter(name = "redisTL", fallbackMethod = "fallbackGetCachedTreeData")
     @CircuitBreaker(name="redisCircuitBreaker",fallbackMethod ="fallbackGetCachedTreeData" )
     @Bulkhead(name = "redisBulkhead", fallbackMethod = "fallbackGetCachedTreeData", type = Bulkhead.Type.SEMAPHORE)
     public AllCampaignTypeData[] getCachedTreeData(String email, int year){
@@ -62,5 +62,33 @@ public class CampaignRedisCacheManager {
         log.info("Redis 저장 데이터 삭제 키:{}",key);
         redisTemplate.delete(key);
     }
+
+    // preFix
+    public AllCampaignTypeData[] getCachedPrefixData(String email, int year){
+        String key = "prefix-data:"+email+":"+year;
+        String json = redisTemplate.opsForValue().get(key);
+
+        if(json == null) return null;
+
+        try{
+            return objectMapper.readValue(json, AllCampaignTypeData[].class);
+        } catch (JsonMappingException e) {
+            log.error("[Redis] Redis 데이터 로딩 중 JsonParing 에러가 발생 : {}",e.getMessage());
+        } catch (JsonProcessingException e) {
+            log.error("[Redis] Redis 데이터 로딩 중 JsonMapping 에러가 발생 : {}",e.getMessage());
+        }
+        return null;
+    }
+
+    public void savePrefixData(String email, int year,AllCampaignTypeData[] rawData){
+        String key = "prefix-data:"+email+":"+year;
+        try {
+            String json = objectMapper.writeValueAsString(rawData);
+            redisTemplate.opsForValue().set(key, json, 24, TimeUnit.HOURS);
+        } catch (JsonProcessingException e) {
+            log.error("Redis 캐시 저장 실패!", e);
+        }
+    }
+
 
 }
