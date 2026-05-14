@@ -9,6 +9,7 @@ import org.example.dto.AllCampaignTypeData;
 import org.example.dto.CampaignDeleteDto;
 import org.example.repo.MemberRepository;
 import org.example.service.KeywordCommandService;
+import org.example.service.RedisEventPublishService;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -20,6 +21,7 @@ import java.util.Map;
 public class CampaignDeleteFacade {
     private final KeywordCommandService keywordCommandService;
     private final TreeUpdateEventProducer treeUpdateEventProducer;
+    private final RedisEventPublishService redisEventPublishService;
     private final MemberRepository memberRepository;
 
     @Transactional
@@ -38,7 +40,32 @@ public class CampaignDeleteFacade {
         keywordCommandService.deleteKeywordByCampaignIdsAndDate(campaignDeleteDto.getCampaignIds(),campaignDeleteDto.getStart(),campaignDeleteDto.getEnd());
         if(checkThreshold && extractDeleteData != null){
             int year = campaignDeleteDto.getStart().getYear();
+            // Publish By Kafka
             treeUpdateEventProducer.sendUpdateEvent(email,memberId,year,extractDeleteData);
+        }else{
+            int year = campaignDeleteDto.getStart().getYear();
+//            treeUpdateEventProducer.sendUpdateEvent();
+        }
+        return new HashMap<>();
+    }
+
+    @Transactional
+    public Map<String,Integer> deleteCampaignDataByPeriodPublishRedis(CampaignDeleteDto campaignDeleteDto){
+        //임계값 확인
+        boolean checkThreshold = campaignDeleteDto.checkThreshold();
+        Long memberId = memberRepository.findByEmail(campaignDeleteDto.getEmail())
+                .orElseThrow(()-> new GrouException(ErrorCode.UNKNOWN_ERROR)).getId();
+        String email  = campaignDeleteDto.getEmail();
+        Map<LocalDate, AllCampaignTypeData> extractDeleteData = null;
+        if(checkThreshold){
+            extractDeleteData =
+                    keywordCommandService.extractDeleteCampaignDataByPeriod(campaignDeleteDto.getStart(),campaignDeleteDto.getEnd(),campaignDeleteDto.getCampaignIds());
+        }
+        keywordCommandService.deleteKeywordByCampaignIdsAndDate(campaignDeleteDto.getCampaignIds(),campaignDeleteDto.getStart(),campaignDeleteDto.getEnd());
+        if(checkThreshold && extractDeleteData != null){
+            int year = campaignDeleteDto.getStart().getYear();
+            //Publish By Redis
+            redisEventPublishService.publishUpdateEvent(email,year,extractDeleteData);
         }else{
             int year = campaignDeleteDto.getStart().getYear();
 //            treeUpdateEventProducer.sendUpdateEvent();

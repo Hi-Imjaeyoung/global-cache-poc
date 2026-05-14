@@ -7,6 +7,7 @@ import org.example.config.RedisPubSubConfig;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -15,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 @AllArgsConstructor
 public class RedisService {
     private final StringRedisTemplate stringRedisTemplate;
+    private static final String LOCK_PREFIX = "lock:update:";
 
     @CircuitBreaker(name="redisCircuitBreaker",fallbackMethod = "fallbackPublishInvalidationL1CacheTree")
     public boolean publishInvalidationL1CacheTree(String memberEmail, int year){
@@ -58,6 +60,19 @@ public class RedisService {
     }
     public void fallbackDeleteIdempotency(String idempotencyKey,Throwable t){
         log.warn("[서킷 OPEN] Redis 장애로 멱등성 키 삭제 불가 키: {}",idempotencyKey);
+    }
+
+    public boolean checkDistributedLock(String email, int year) {
+        String lockKey = LOCK_PREFIX + email + ":" + year;
+        return Boolean.TRUE.equals(
+                stringRedisTemplate.opsForValue()
+                .setIfAbsent(lockKey, "LOCKED", Duration.ofSeconds(10))
+        );
+    }
+
+    public void releaseDistributedLock(String email, int year) {
+        String lockKey = LOCK_PREFIX + email + ":" + year;
+        stringRedisTemplate.delete(lockKey);
     }
 
 

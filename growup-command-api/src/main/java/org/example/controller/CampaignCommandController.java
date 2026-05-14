@@ -25,4 +25,12 @@ public class CampaignCommandController {
                 .data("delete success")
                 .build(), HttpStatus.OK);
     }
+
+    @DeleteMapping("/delete/data/pub")
+    public ResponseEntity<CommonResponse<?>> deleteCampaignDataByPeriodPublishRedis(@RequestBody CampaignDeleteDto campaignDeleteDto){
+        campaignDeleteFacade.deleteCampaignDataByPeriodPublishRedis(campaignDeleteDto);
+        return new ResponseEntity<>(CommonResponse.builder("delete success")
+                .data("delete success")
+                .build(), HttpStatus.OK);
+    }
 }
