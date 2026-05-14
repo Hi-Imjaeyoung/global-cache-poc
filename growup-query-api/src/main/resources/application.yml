@@ -10,8 +10,8 @@ spring:
     password: root
   data:
     redis:
-      host: 127.0.0.1
-      port: 8666
+      host: localhost
+      port: 6379
   kafka:
     consumer:
       group-id: query-consumer-group
@@ -24,9 +24,9 @@ spring:
 logging:
   level:
     root: INFO
-    org.example: debug
-    org.apache.kafka: INFO
-    org.springframework.kafka: INFO
+    org.example: WARN
+    org.apache.kafka: WARN
+    org.springframework.kafka: WARN
     org.hibernate.SQL: WARN
     org.hibernate.orm.jdbc.bind: WARN
 
@@ -42,7 +42,7 @@ resilience4j:
     instances:
       redisTL:
         # 우리가 기다릴 최대 시간 (0.2초)
-        timeoutDuration: 200ms
+        timeoutDuration: 2000ms
         # 타임아웃 발생 시 실행 중인 스레드를 인터럽트 할지 여부
         cancelRunningFuture: true
   circuitbreaker:
@@ -68,3 +68,12 @@ resilience4j:
         limitForPeriod: 50
         # 티켓이 없으면 기다리지 말고 즉시 튕겨내라!
         timeoutDuration: 0s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "metrics" # metrics 엔드포인트만 노출
+  endpoint:
+    metrics:
+      enabled: true

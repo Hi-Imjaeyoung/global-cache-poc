@@ -5,7 +5,7 @@ spring:
   application:
     name: command-api
   datasource:
-    url: jdbc:mysql://localhost:3306/growup_db
+    url: jdbc:mysql://localhost:3307/growup_db
     username: root
     password: root
   jpa:

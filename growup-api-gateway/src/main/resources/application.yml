@@ -24,7 +24,12 @@ spring:
                 retries: 3 # 최대 3번까지 재시도
                 statuses: BAD_GATEWAY, SERVICE_UNAVAILABLE, INTERNAL_SERVER_ERROR
                 methods: GET
-                exceptions: java.net.ConnectException, java.io.IOException, org.springframework.cloud.gateway.support.NotFoundException
+                exceptions:
+                - java.net.ConnectException
+                - java.io.IOException
+                - org.springframework.cloud.gateway.support.NotFoundException
+                - io.netty.channel.ConnectTimeoutException
+                - io.netty.channel.AbstractChannel$AnnotatedConnectException
 eureka:
   client:
     service-url:
