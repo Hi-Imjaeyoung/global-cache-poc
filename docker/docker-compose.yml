@@ -1,6 +1,18 @@
 version: '3.8'
 
 services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: local-rabbitmq
+    ports:
+      - "5672:5672"     # AMQP 순수 메시징 포트
+      - "15672:15672"   # 웹 관리 대시보드 포트 (중요!)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
   kafka:
     image: confluentinc/confluent-local:7.5.0
     container_name: local-kafka
@@ -73,3 +85,5 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka:29092" # 🚨 [제일 중요!!]
     depends_on:
       - kafka # 네 파일에 있는 카프카 컨테이너 서비스 이름과 맞춰줘!
+volumes:
+  rabbitmq_data:

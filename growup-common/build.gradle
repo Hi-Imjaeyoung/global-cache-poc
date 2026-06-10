@@ -36,6 +36,8 @@ dependencies {
     // Json 변환을 위한 라이브러리 -> 절대 Spring WebMVC 의존성을 도입하지 않겠다는 나의 굳은 의지.
     implementation 'org.springframework.boot:spring-boot-starter-json'
 
+    implementation 'org.springframework.boot:spring-boot-starter-amqp'
+
     testImplementation 'org.openjdk.jmh:jmh-core:1.37'
     testAnnotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
 }
